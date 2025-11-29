@@ -194,6 +194,8 @@ class DecompositionLens(BaseLens):
             {"indicator": k, "score": v}
             for k, v in combined.items()
         ])
+        if ranking.empty:
+            return pd.DataFrame(columns=["indicator", "score", "rank"])
         ranking = ranking.sort_values("score", ascending=False)
         ranking["rank"] = range(1, len(ranking) + 1)
 
