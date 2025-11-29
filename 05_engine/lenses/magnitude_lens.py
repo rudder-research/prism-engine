@@ -70,7 +70,7 @@ class MagnitudeLens(BaseLens):
 
         # Detect magnitude spikes (>2 std from rolling mean)
         z_score = (mag_series - rolling_mean) / rolling_std
-        spikes = data.loc[z_score.abs() > 2, "date"].tolist()
+        spikes = mag_series[z_score.abs() > 2].index.tolist()
 
         result = {
             "current_magnitude": float(magnitudes[-1]) if len(magnitudes) > 0 else 0,
