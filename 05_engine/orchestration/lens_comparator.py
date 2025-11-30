@@ -12,6 +12,9 @@ import time
 
 logger = logging.getLogger(__name__)
 
+# Get directory where this script lives
+_SCRIPT_DIR = Path(__file__).parent.resolve()
+
 
 class LensComparator:
     """
@@ -30,7 +33,7 @@ class LensComparator:
         Args:
             checkpoint_dir: Directory for saving results
         """
-        self.checkpoint_dir = checkpoint_dir or Path("05_engine/checkpoints")
+        self.checkpoint_dir = checkpoint_dir or (_SCRIPT_DIR.parent / "checkpoints")
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
         self.results: Dict[str, Any] = {}
         self.rankings: Dict[str, pd.DataFrame] = {}

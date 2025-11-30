@@ -4,27 +4,33 @@ PRISM Benchmark Data Generator
 
 Creates CSV files with KNOWN structure for validating PRISM.
 
-Run this, then run PRISM on each file. 
+Run this, then run PRISM on each file.
 If PRISM finds what we planted, the math works.
 
 Usage:
-    exec(open('benchmark_generator.py').read())
-    # Creates 6 CSV files in current directory (or specify path)
+    from benchmark_generator import generate_all
+    generate_all()  # Creates in default location
+    generate_all('/path/to/output')  # Creates in specified location
 """
 
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-import os
+from pathlib import Path
 
-# Output directory - change if needed
-OUTPUT_DIR = '.'  # Current directory, or set to your data/raw path
+# Get directory where this script lives
+_SCRIPT_DIR = Path(__file__).parent.resolve()
+_PROJECT_ROOT = _SCRIPT_DIR.parent.parent
+
+# Output directory - default to project's data/benchmark directory
+OUTPUT_DIR = _PROJECT_ROOT / 'data' / 'benchmark'
+
 
 def set_output_dir(path):
     """Set where to save the benchmark files."""
     global OUTPUT_DIR
-    OUTPUT_DIR = path
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    OUTPUT_DIR = Path(path)
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     print(f"Output directory: {OUTPUT_DIR}")
 
 
@@ -70,7 +76,8 @@ def create_clear_leader():
         'F': noise2,      # Noise
     }, index=dates)
     
-    path = os.path.join(OUTPUT_DIR, 'benchmark_01_clear_leader.csv')
+    path = OUTPUT_DIR / 'benchmark_01_clear_leader.csv'
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     df.to_csv(path)
     print(f"✓ Created: {path}")
     print("  TRUTH: A is the leader. B,C,D follow with lags 3,5,7. E,F are noise.")
@@ -120,7 +127,8 @@ def create_two_regimes():
     
     df = pd.DataFrame(data, index=dates)
     
-    path = os.path.join(OUTPUT_DIR, 'benchmark_02_two_regimes.csv')
+    path = OUTPUT_DIR / 'benchmark_02_two_regimes.csv'
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     df.to_csv(path)
     print(f"✓ Created: {path}")
     print("  TRUTH: Regime change at day 500. A-E change behavior. F does not.")
@@ -171,7 +179,8 @@ def create_clusters():
         'G': G, 'H': H,          # Cluster 3
     }, index=dates)
     
-    path = os.path.join(OUTPUT_DIR, 'benchmark_03_clusters.csv')
+    path = OUTPUT_DIR / 'benchmark_03_clusters.csv'
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     df.to_csv(path)
     print(f"✓ Created: {path}")
     print("  TRUTH: 3 clusters. {A,B,C}, {D,E,F}, {G,H}. High within, low between correlation.")
@@ -216,7 +225,8 @@ def create_periodic():
         'E': E + 100,
     }, index=dates)
     
-    path = os.path.join(OUTPUT_DIR, 'benchmark_04_periodic.csv')
+    path = OUTPUT_DIR / 'benchmark_04_periodic.csv'
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     df.to_csv(path)
     print(f"✓ Created: {path}")
     print("  TRUTH: A=20day, B=50day, C=100day cycles. D=none. E=20+50day mixed.")
@@ -272,7 +282,8 @@ def create_anomalies():
         'E': E,
     }, index=dates)
     
-    path = os.path.join(OUTPUT_DIR, 'benchmark_05_anomalies.csv')
+    path = OUTPUT_DIR / 'benchmark_05_anomalies.csv'
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     df.to_csv(path)
     print(f"✓ Created: {path}")
     print("  TRUTH: A,D clean. B has 5 spikes. C has collective anomaly days 400-420. E has 10 spikes.")
@@ -309,7 +320,8 @@ def create_pure_noise():
         'F': np.cumsum(np.random.randn(n) * 0.01) + 100,
     }, index=dates)
     
-    path = os.path.join(OUTPUT_DIR, 'benchmark_06_pure_noise.csv')
+    path = OUTPUT_DIR / 'benchmark_06_pure_noise.csv'
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     df.to_csv(path)
     print(f"✓ Created: {path}")
     print("  TRUTH: Pure noise. No structure. PRISM should find NOTHING.")

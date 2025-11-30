@@ -7,11 +7,15 @@ import sys
 from pathlib import Path
 from datetime import datetime
 
+# Get project root (parent of utils directory)
+_SCRIPT_DIR = Path(__file__).parent.resolve()
+_PROJECT_ROOT = _SCRIPT_DIR.parent
+
 
 def setup_logging(
     level: str = "INFO",
     log_file: bool = True,
-    log_dir: Path = Path("logs")
+    log_dir: Path = None
 ) -> logging.Logger:
     """
     Set up logging for PRISM Engine.
@@ -19,11 +23,15 @@ def setup_logging(
     Args:
         level: Logging level ('DEBUG', 'INFO', 'WARNING', 'ERROR')
         log_file: Whether to also log to file
-        log_dir: Directory for log files
+        log_dir: Directory for log files (defaults to PROJECT_ROOT/logs)
 
     Returns:
         Root logger
     """
+    # Default to logs directory in project root
+    if log_dir is None:
+        log_dir = _PROJECT_ROOT / "logs"
+
     # Create formatter
     formatter = logging.Formatter(
         "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",

@@ -7,12 +7,15 @@ from pathlib import Path
 from datetime import datetime
 import json
 
+# Get directory where this script lives
+_SCRIPT_DIR = Path(__file__).parent.resolve()
+
 
 class ReportGenerator:
     """Generate markdown and HTML reports from PRISM analysis."""
 
     def __init__(self, output_dir: Optional[Path] = None):
-        self.output_dir = output_dir or Path("07_interpretation/reports")
+        self.output_dir = output_dir or (_SCRIPT_DIR / "reports")
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def generate_markdown(self, results: Dict[str, Any], domain: str = "financial") -> str:

@@ -11,6 +11,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Get project root (utils -> project root)
+_SCRIPT_DIR = Path(__file__).parent.resolve()
+_PROJECT_ROOT = _SCRIPT_DIR.parent
+
 
 class CheckpointManager:
     """
@@ -22,8 +26,9 @@ class CheckpointManager:
     - Checkpoint inspection and diffing
     """
 
-    def __init__(self, base_path: Path = Path(".")):
-        self.base_path = Path(base_path)
+    def __init__(self, base_path: Path = None):
+        # Default to project root if not specified
+        self.base_path = Path(base_path) if base_path else _PROJECT_ROOT
 
     def save(
         self,

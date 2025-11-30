@@ -11,6 +11,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Get directory where this script lives
+_SCRIPT_DIR = Path(__file__).parent.resolve()
+
 
 class BaseFetcher(ABC):
     """
@@ -28,7 +31,7 @@ class BaseFetcher(ABC):
         Args:
             checkpoint_dir: Directory to save fetch checkpoints
         """
-        self.checkpoint_dir = checkpoint_dir or Path("01_fetch/checkpoints")
+        self.checkpoint_dir = checkpoint_dir or (_SCRIPT_DIR / "checkpoints")
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
         self._last_fetch_time: Optional[datetime] = None
 
