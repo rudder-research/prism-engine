@@ -11,6 +11,10 @@ from .fetcher_base import BaseFetcher
 
 logger = logging.getLogger(__name__)
 
+# Get project root (01_fetch -> project root)
+_SCRIPT_DIR = Path(__file__).parent.resolve()
+_PROJECT_ROOT = _SCRIPT_DIR.parent
+
 
 class CustomFetcher(BaseFetcher):
     """
@@ -32,7 +36,8 @@ class CustomFetcher(BaseFetcher):
             checkpoint_dir: Directory for checkpoints
         """
         super().__init__(checkpoint_dir)
-        self.data_dir = Path(data_dir) if data_dir else Path(".")
+        # Default to project data directory
+        self.data_dir = Path(data_dir) if data_dir else (_PROJECT_ROOT / "data")
 
     def validate_response(self, response: Any) -> bool:
         """Validate loaded data."""

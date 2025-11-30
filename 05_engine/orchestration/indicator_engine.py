@@ -15,6 +15,10 @@ from .consensus import ConsensusEngine
 
 logger = logging.getLogger(__name__)
 
+# Get project root (05_engine/orchestration -> project root)
+_SCRIPT_DIR = Path(__file__).parent.resolve()
+_PROJECT_ROOT = _SCRIPT_DIR.parent.parent
+
 
 class IndicatorEngine:
     """
@@ -43,7 +47,7 @@ class IndicatorEngine:
             output_dir: Directory for outputs
             config: Configuration dictionary
         """
-        self.output_dir = Path(output_dir) if output_dir else Path("06_output")
+        self.output_dir = Path(output_dir) if output_dir else (_PROJECT_ROOT / "06_output")
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         self.config = config or {}

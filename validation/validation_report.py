@@ -12,6 +12,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Get directory where this script lives
+_SCRIPT_DIR = Path(__file__).parent.resolve()
+
 
 class ValidationReport:
     """
@@ -31,7 +34,7 @@ class ValidationReport:
         Args:
             output_dir: Directory for saving reports
         """
-        self.output_dir = output_dir or Path("validation/reports")
+        self.output_dir = output_dir or (_SCRIPT_DIR / "reports")
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.results: Dict[str, Any] = {}
 
