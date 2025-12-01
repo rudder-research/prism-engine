@@ -1,5 +1,5 @@
 """
-Logging configuration for PRISM Engine
+Logging configuration for Engine
 """
 
 import logging
@@ -18,7 +18,7 @@ def setup_logging(
     log_dir: Path = None
 ) -> logging.Logger:
     """
-    Set up logging for PRISM Engine.
+    Set up logging for Engine.
 
     Args:
         level: Logging level ('DEBUG', 'INFO', 'WARNING', 'ERROR')
@@ -39,7 +39,7 @@ def setup_logging(
     )
 
     # Get root logger
-    logger = logging.getLogger("prism_engine")
+    logger = logging.getLogger("engine")
     logger.setLevel(getattr(logging, level.upper()))
 
     # Console handler
@@ -52,7 +52,7 @@ def setup_logging(
         log_dir.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d")
         file_handler = logging.FileHandler(
-            log_dir / f"prism_{timestamp}.log"
+            log_dir / f"engine_{timestamp}.log"
         )
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-PRISM Temporal Visualizer - Visualize ranking changes over time windows
+Temporal Visualizer - Visualize ranking changes over time windows
 =======================================================================
 
 Reads output from temporal_runner.py and generates visualizations.
@@ -39,7 +39,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 
 class TemporalVisualizer:
-    """Visualize temporal PRISM results."""
+    """Visualize temporal results."""
 
     def __init__(
         self,
@@ -408,7 +408,7 @@ class TemporalVisualizer:
     def generate_all(self, save: bool = True) -> None:
         """Generate all visualizations."""
         print("\n" + "=" * 60)
-        print("PRISM TEMPORAL VISUALIZER")
+        print("TEMPORAL VISUALIZER")
         print("=" * 60)
 
         # Load data
@@ -478,7 +478,7 @@ class TemporalVisualizer:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="PRISM Temporal Visualizer - Generate plots from temporal analysis",
+        description="Temporal Visualizer - Generate plots from temporal analysis",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

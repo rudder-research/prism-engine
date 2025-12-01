@@ -11,7 +11,7 @@ class TestPCALens:
     """Test PCALens functionality."""
 
     def test_explained_variance_sums_to_one(self, sample_panel_small):
-        from prism_engine.engine.lenses import PCALens
+        from engine.engine.lenses import PCALens
 
         lens = PCALens()
         result = lens.analyze(sample_panel_small)
@@ -20,7 +20,7 @@ class TestPCALens:
         assert abs(total_var - 1.0) < 0.01
 
     def test_cumulative_variance_is_monotonic(self, sample_panel_small):
-        from prism_engine.engine.lenses import PCALens
+        from engine.engine.lenses import PCALens
 
         lens = PCALens()
         result = lens.analyze(sample_panel_small)
@@ -32,7 +32,7 @@ class TestPCALens:
             assert cumulative[i] >= cumulative[i-1]
 
     def test_loadings_have_correct_shape(self, sample_panel_small):
-        from prism_engine.engine.lenses import PCALens
+        from engine.engine.lenses import PCALens
 
         lens = PCALens()
         result = lens.analyze(sample_panel_small, n_components=2)

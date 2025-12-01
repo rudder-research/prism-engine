@@ -1,11 +1,11 @@
 """
-PRISM Engine - Probability Research and Integrated Statistical Mathematics Engine
+Engine - Probability Research and Integrated Statistical Mathematics Engine
 
 A quantitative analysis framework with multiple mathematical "lenses" for
 analyzing market data and financial indicators.
 
 Usage:
-    from prism_engine import IndicatorEngine
+    from engine import IndicatorEngine
 
     engine = IndicatorEngine()
     results = engine.analyze(panel_data, mode="basic")
@@ -65,7 +65,7 @@ def __getattr__(name):
         engine = import_module("05_engine")
         return engine.get_lens
 
-    raise AttributeError(f"module 'prism_engine' has no attribute '{name}'")
+    raise AttributeError(f"module 'engine' has no attribute '{name}'")
 
 
 __all__ = [

@@ -25,7 +25,7 @@ class LensValidator:
         Returns:
             Dictionary with validation results
         """
-        from prism_engine.engine.lenses import GrangerLens
+        from engine.engine.lenses import GrangerLens
 
         successes = 0
 
@@ -65,7 +65,7 @@ class LensValidator:
         Returns:
             Dictionary with validation results
         """
-        from prism_engine.engine.lenses import ClusteringLens
+        from engine.engine.lenses import ClusteringLens
 
         accuracies = []
 
@@ -117,7 +117,7 @@ class LensValidator:
         Returns:
             Dictionary with validation results
         """
-        from prism_engine.engine.lenses import RegimeSwitchingLens
+        from engine.engine.lenses import RegimeSwitchingLens
 
         accuracies = []
 

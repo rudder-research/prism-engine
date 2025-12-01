@@ -11,7 +11,7 @@ class TestNaNAnalyzer:
     """Test NaN analysis functionality."""
 
     def test_summary_counts_nan(self, sample_panel_with_nan):
-        from prism_engine.cleaning import NaNAnalyzer
+        from engine.cleaning import NaNAnalyzer
 
         analyzer = NaNAnalyzer(sample_panel_with_nan)
         summary = analyzer.summary()
@@ -24,7 +24,7 @@ class TestNaNAnalyzer:
         assert summary["gappy"]["n_nan"] > 0
 
     def test_gap_analysis_finds_gaps(self, sample_panel_with_nan):
-        from prism_engine.cleaning import NaNAnalyzer
+        from engine.cleaning import NaNAnalyzer
 
         analyzer = NaNAnalyzer(sample_panel_with_nan)
         gaps = analyzer.gap_analysis()
@@ -37,7 +37,7 @@ class TestNaNStrategies:
     """Test NaN filling strategies."""
 
     def test_ffill_fills_gaps(self, sample_panel_with_nan):
-        from prism_engine.cleaning import get_strategy
+        from engine.cleaning import get_strategy
 
         strategy = get_strategy("ffill")
         series = sample_panel_with_nan["sparse"].copy()
@@ -48,7 +48,7 @@ class TestNaNStrategies:
         assert filled.isna().sum() < series.isna().sum()
 
     def test_linear_interpolation(self, sample_panel_with_nan):
-        from prism_engine.cleaning import get_strategy
+        from engine.cleaning import get_strategy
 
         strategy = get_strategy("linear")
         series = sample_panel_with_nan["gappy"].copy()
@@ -59,7 +59,7 @@ class TestNaNStrategies:
         assert filled.isna().sum() < series.isna().sum()
 
     def test_unknown_strategy_raises(self):
-        from prism_engine.cleaning import get_strategy
+        from engine.cleaning import get_strategy
 
         with pytest.raises(ValueError, match="Unknown strategy"):
             get_strategy("nonexistent_strategy")

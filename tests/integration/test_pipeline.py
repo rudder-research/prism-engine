@@ -11,7 +11,7 @@ class TestIndicatorEngine:
     """Test the high-level IndicatorEngine."""
 
     def test_basic_analysis_runs(self, sample_panel_small):
-        from prism_engine.engine.orchestration import IndicatorEngine
+        from engine.engine.orchestration import IndicatorEngine
 
         engine = IndicatorEngine()
         results = engine.analyze(sample_panel_small, mode="basic")
@@ -21,7 +21,7 @@ class TestIndicatorEngine:
         assert "consensus" in results
 
     def test_quick_analysis_returns_dataframe(self, sample_panel_small):
-        from prism_engine.engine.orchestration import IndicatorEngine
+        from engine.engine.orchestration import IndicatorEngine
 
         engine = IndicatorEngine()
         ranking = engine.quick_analysis(sample_panel_small)
@@ -34,7 +34,7 @@ class TestLensComparator:
     """Test lens comparison functionality."""
 
     def test_run_multiple_lenses(self, sample_panel_small):
-        from prism_engine.engine.orchestration import LensComparator
+        from engine.engine.orchestration import LensComparator
 
         comparator = LensComparator()
         results = comparator.run_lenses(
@@ -46,7 +46,7 @@ class TestLensComparator:
         assert "pca" in results["results"]
 
     def test_agreement_matrix_is_symmetric(self, sample_panel_small):
-        from prism_engine.engine.orchestration import LensComparator
+        from engine.engine.orchestration import LensComparator
 
         comparator = LensComparator()
         comparator.run_lenses(
@@ -66,7 +66,7 @@ class TestConsensusEngine:
     """Test consensus building."""
 
     def test_borda_count_ranking(self, sample_panel_small):
-        from prism_engine.engine.orchestration import LensComparator, ConsensusEngine
+        from engine.engine.orchestration import LensComparator, ConsensusEngine
 
         comparator = LensComparator()
         comparator.run_lenses(sample_panel_small, lenses=["magnitude", "pca"])
@@ -79,7 +79,7 @@ class TestConsensusEngine:
         assert "consensus_rank" in borda.columns
 
     def test_voting_counts_correctly(self, sample_panel_small):
-        from prism_engine.engine.orchestration import LensComparator, ConsensusEngine
+        from engine.engine.orchestration import LensComparator, ConsensusEngine
 
         comparator = LensComparator()
         comparator.run_lenses(sample_panel_small, lenses=["magnitude", "pca", "influence"])

@@ -1,14 +1,14 @@
 """
-Temporal Analysis - Track PRISM results over rolling time windows
+Temporal Analysis - Track results over rolling time windows
 ==================================================================
 
-Run PRISM analysis on rolling windows to see how indicator importance
+Run analysis on rolling windows to see how indicator importance
 changes over time. Optimized for efficiency with many indicators.
 
 Usage:
-    from temporal_analysis import TemporalPRISM
+    from temporal_analysis import TemporalEngine
 
-    temporal = TemporalPRISM(panel_clean)
+    temporal = TemporalEngine(panel_clean)
     results = temporal.run_rolling_analysis(window_days=252)  # 1 year
 
     # Visualize
@@ -23,9 +23,9 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
-class TemporalPRISM:
+class TemporalEngine:
     """
-    Run PRISM analysis over rolling time windows to track
+    Run analysis over rolling time windows to track
     how indicator importance evolves over time.
 
     Optimized for:
@@ -53,7 +53,7 @@ class TemporalPRISM:
     def _get_lens(self, name: str):
         """Get or create lens instance (cached for efficiency)."""
         if name not in self._lens_cache:
-            from prism_loader import load_lens
+            from loader import load_lens
             self._lens_cache[name] = load_lens(name)
         return self._lens_cache[name]
 
@@ -102,7 +102,7 @@ class TemporalPRISM:
         progress_callback: Callable = None
     ) -> Dict[str, Any]:
         """
-        Run PRISM analysis over rolling windows.
+        Run analysis over rolling windows.
 
         Args:
             window_days: Size of rolling window (default 252 = 1 year)
@@ -323,7 +323,7 @@ class TemporalPRISM:
         return snapshot.reset_index(drop=True)
 
 
-class StreamingTemporalPRISM:
+class StreamingTemporalEngine:
     """
     Memory-efficient streaming version for very long time series.
 
@@ -380,7 +380,7 @@ class StreamingTemporalPRISM:
         # Process windows
         window_ends = list(range(window_days, len(panel), step_days))
 
-        temporal = TemporalPRISM(panel, lenses=self.lenses)
+        temporal = TemporalEngine(panel, lenses=self.lenses)
 
         for i, end_idx in enumerate(window_ends):
             start_idx = max(0, end_idx - window_days)
@@ -430,7 +430,7 @@ def quick_temporal_analysis(
     window_days = int(window_years * 252)  # Trading days
     step_days = int(step_months * 21)  # Trading days per month
 
-    temporal = TemporalPRISM(panel)
+    temporal = TemporalEngine(panel)
 
     print(f"Running temporal analysis...")
     print(f"  Window: {window_years} year(s) ({window_days} days)")

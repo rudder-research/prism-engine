@@ -11,7 +11,7 @@ class TestBaseLensValidation:
     """Test input validation."""
 
     def test_validate_rejects_empty_dataframe(self, sample_panel_small):
-        from prism_engine.engine.lenses import MagnitudeLens
+        from engine.engine.lenses import MagnitudeLens
 
         lens = MagnitudeLens()
         empty_df = pd.DataFrame()
@@ -20,7 +20,7 @@ class TestBaseLensValidation:
             lens.validate_input(empty_df)
 
     def test_validate_requires_date_column(self, sample_panel_small):
-        from prism_engine.engine.lenses import MagnitudeLens
+        from engine.engine.lenses import MagnitudeLens
 
         lens = MagnitudeLens()
         no_date = sample_panel_small.drop(columns=["date"])
@@ -29,7 +29,7 @@ class TestBaseLensValidation:
             lens.validate_input(no_date)
 
     def test_validate_requires_multiple_indicators(self, sample_panel_small):
-        from prism_engine.engine.lenses import MagnitudeLens
+        from engine.engine.lenses import MagnitudeLens
 
         lens = MagnitudeLens()
         single_col = sample_panel_small[["date", "indicator_a"]]
@@ -42,7 +42,7 @@ class TestBaseLensNormalization:
     """Test data normalization."""
 
     def test_zscore_normalization(self, sample_panel_small):
-        from prism_engine.engine.lenses import MagnitudeLens
+        from engine.engine.lenses import MagnitudeLens
 
         lens = MagnitudeLens()
         normalized = lens.normalize_data(sample_panel_small, method="zscore")
@@ -53,7 +53,7 @@ class TestBaseLensNormalization:
             assert abs(normalized[col].std() - 1.0) < 0.1
 
     def test_minmax_normalization(self, sample_panel_small):
-        from prism_engine.engine.lenses import MagnitudeLens
+        from engine.engine.lenses import MagnitudeLens
 
         lens = MagnitudeLens()
         normalized = lens.normalize_data(sample_panel_small, method="minmax")
