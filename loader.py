@@ -1,12 +1,12 @@
 """
-PRISM Lens Loader - Bulletproof Edition
-========================================
+Lens Loader - Bulletproof Edition
+==================================
 
 Handles all the Python import nonsense so you can just run lenses.
 
 Usage:
     # Import the loader
-    from prism_loader import run_lens, run_all_lenses, quick_analysis
+    from loader import run_lens, run_all_lenses, quick_analysis
 
     # Run a single lens
     result = run_lens('magnitude', panel_clean)
@@ -28,8 +28,8 @@ from pathlib import Path
 # SETUP PATHS
 # ============================================================================
 
-def _find_prism_root():
-    """Find the prism-engine root directory relative to this file."""
+def _find_engine_root():
+    """Find the engine root directory relative to this file."""
     # Start from this file's location
     if '__file__' in dir():
         script_dir = Path(os.path.abspath(__file__)).parent
@@ -38,8 +38,8 @@ def _find_prism_root():
 
     # Check possible locations relative to script
     candidates = [
-        script_dir,  # prism_loader.py is in root
-        script_dir.parent,  # prism_loader.py is in a subdirectory
+        script_dir,  # loader.py is in root
+        script_dir.parent,  # loader.py is in a subdirectory
         Path('.').resolve(),  # Current working directory
     ]
 
@@ -50,17 +50,17 @@ def _find_prism_root():
     return None
 
 
-PRISM_ROOT = _find_prism_root()
+ENGINE_ROOT = _find_engine_root()
 
-if PRISM_ROOT is None:
-    print("Warning: Could not find prism-engine folder!")
-    print("    Set PRISM_ROOT manually:")
-    print("    PRISM_ROOT = '/your/path/to/prism-engine'")
+if ENGINE_ROOT is None:
+    print("Warning: Could not find engine folder!")
+    print("    Set ENGINE_ROOT manually:")
+    print("    ENGINE_ROOT = '/your/path/to/engine'")
 else:
-    print(f"PRISM_ROOT = {PRISM_ROOT}")
-    sys.path.insert(0, PRISM_ROOT)
+    print(f"ENGINE_ROOT = {ENGINE_ROOT}")
+    sys.path.insert(0, ENGINE_ROOT)
 
-LENSES_PATH = os.path.join(PRISM_ROOT, '05_engine', 'lenses') if PRISM_ROOT else None
+LENSES_PATH = os.path.join(ENGINE_ROOT, '05_engine', 'lenses') if ENGINE_ROOT else None
 
 
 # ============================================================================
@@ -413,7 +413,7 @@ def quick_analysis(panel: pd.DataFrame) -> pd.DataFrame:
         consensus = quick_analysis(panel_clean)
         print(consensus.head(10))
     """
-    print("Running PRISM analysis...")
+    print("Running analysis...")
     results = run_all_lenses(panel)
     consensus = compute_consensus(results)
     print(f"\n✓ Done! Top indicator: {consensus.index[0]}")

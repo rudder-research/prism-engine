@@ -2,7 +2,7 @@
 Temporal Visualization - Plot how indicator rankings change over time
 =====================================================================
 
-Visualizations for temporal PRISM analysis:
+Visualizations for temporal analysis:
 - Ranking evolution line charts
 - Bump charts (rank trajectories)
 - Heatmaps of rank changes
@@ -38,7 +38,7 @@ def plot_ranking_evolution(
     Plot line chart showing how top indicator rankings change over time.
 
     Args:
-        results: Output from TemporalPRISM.run_rolling_analysis()
+        results: Output from TemporalEngine.run_rolling_analysis()
         top_n: Number of top indicators to show
         figsize: Figure size
         save_path: Optional path to save figure
@@ -110,7 +110,7 @@ def plot_bump_chart(
     Bump charts clearly show when indicators overtake each other.
 
     Args:
-        results: Output from TemporalPRISM.run_rolling_analysis()
+        results: Output from TemporalEngine.run_rolling_analysis()
         indicators: Specific indicators to show (if None, uses top_n)
         top_n: Number of top indicators if indicators not specified
         figsize: Figure size
@@ -208,7 +208,7 @@ def plot_rank_heatmap(
     Color intensity shows rank (dark = high rank/important).
 
     Args:
-        results: Output from TemporalPRISM.run_rolling_analysis()
+        results: Output from TemporalEngine.run_rolling_analysis()
         top_n: Number of indicators to show
         figsize: Figure size
         save_path: Optional path to save figure
@@ -277,7 +277,7 @@ def plot_rank_changes(
     Shows which indicators are rising/falling in importance.
 
     Args:
-        results: Output from TemporalPRISM.run_rolling_analysis()
+        results: Output from TemporalEngine.run_rolling_analysis()
         lookback: Number of periods to look back
         top_n: Number of indicators to show (top movers)
         figsize: Figure size
@@ -351,7 +351,7 @@ def create_animation_frames(
     Use ffmpeg or similar to combine into video.
 
     Args:
-        results: Output from TemporalPRISM.run_rolling_analysis()
+        results: Output from TemporalEngine.run_rolling_analysis()
         output_dir: Directory to save frames
         top_n: Number of top indicators per frame
         figsize: Figure size
@@ -424,7 +424,7 @@ def plot_stability_analysis(
     Helps identify reliable vs volatile indicators.
 
     Args:
-        results: Output from TemporalPRISM.run_rolling_analysis()
+        results: Output from TemporalEngine.run_rolling_analysis()
         top_n: Number of indicators to show
         figsize: Figure size
         save_path: Optional path to save figure
@@ -485,7 +485,7 @@ def generate_temporal_report(
     Creates all plot types and saves to output directory.
 
     Args:
-        results: Output from TemporalPRISM.run_rolling_analysis()
+        results: Output from TemporalEngine.run_rolling_analysis()
         output_dir: Directory to save all visualizations
         include_animation: Whether to create animation frames
 

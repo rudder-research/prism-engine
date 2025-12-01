@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-PRISM Temporal Aggregator - Aggregate Granular Results
+Temporal Aggregator - Aggregate Granular Results
 =======================================================
 
 Aggregates 1-year (or any increment) temporal results into meaningful
@@ -15,11 +15,11 @@ Usage (command line):
     python temporal_aggregator.py --group 5year
 
     # Custom database path
-    python temporal_aggregator.py --group regime --db path/to/prism_temporal.db
+    python temporal_aggregator.py --group regime --db path/to/temporal.db
 
 Usage (Python):
     from temporal_aggregator import TemporalAggregator
-    agg = TemporalAggregator(db_path='06_output/temporal/prism_temporal.db')
+    agg = TemporalAggregator(db_path='06_output/temporal/temporal.db')
     regime_summary = agg.aggregate_by_regime()
     decade_avg = agg.aggregate_by_period(period=10)
 
@@ -78,7 +78,7 @@ REGIME_LABELS = {
 
 class TemporalAggregator:
     """
-    Aggregate granular temporal PRISM results into regime-based or
+    Aggregate granular temporal results into regime-based or
     fixed-period summaries.
     """
 
@@ -92,12 +92,12 @@ class TemporalAggregator:
         Initialize aggregator.
 
         Args:
-            db_path: Path to prism_temporal.db
+            db_path: Path to temporal.db
             output_dir: Output directory for aggregated results
             regimes: Custom regime definitions (default: REGIMES constant)
         """
         self.project_root = PROJECT_ROOT
-        self.db_path = Path(db_path) if db_path else self.project_root / "06_output" / "temporal" / "prism_temporal.db"
+        self.db_path = Path(db_path) if db_path else self.project_root / "06_output" / "temporal" / "temporal.db"
         self.output_dir = Path(output_dir) if output_dir else self.project_root / "06_output" / "temporal" / "summary"
         self.regimes = regimes or REGIMES
 
@@ -332,7 +332,7 @@ class TemporalAggregator:
         self,
         pivot_df: pd.DataFrame,
         output_path: Path,
-        title: str = "PRISM Indicator Rankings",
+        title: str = "Indicator Rankings",
         top_n: int = 20,
     ) -> Optional[Path]:
         """
@@ -468,7 +468,7 @@ class TemporalAggregator:
 
         if verbose:
             print("=" * 60)
-            print("PRISM TEMPORAL AGGREGATOR")
+            print("TEMPORAL AGGREGATOR")
             print("=" * 60)
             print(f"Database: {self.db_path}")
             print(f"Group by: {group_by}")
@@ -504,7 +504,7 @@ class TemporalAggregator:
             if generate_plots:
                 # Heatmap
                 heatmap_path = plots_dir / "regime_heatmap.png"
-                if self.generate_heatmap(summary, heatmap_path, "PRISM Rankings by Regime"):
+                if self.generate_heatmap(summary, heatmap_path, "Rankings by Regime"):
                     if verbose:
                         print(f"Saved: {heatmap_path}")
 
@@ -524,7 +524,7 @@ class TemporalAggregator:
 
             if generate_plots:
                 heatmap_path = plots_dir / "decade_heatmap.png"
-                if self.generate_heatmap(summary, heatmap_path, "PRISM Rankings by Decade"):
+                if self.generate_heatmap(summary, heatmap_path, "Rankings by Decade"):
                     if verbose:
                         print(f"Saved: {heatmap_path}")
 
@@ -538,7 +538,7 @@ class TemporalAggregator:
 
             if generate_plots:
                 heatmap_path = plots_dir / "5year_heatmap.png"
-                if self.generate_heatmap(summary, heatmap_path, "PRISM Rankings by 5-Year Period"):
+                if self.generate_heatmap(summary, heatmap_path, "Rankings by 5-Year Period"):
                     if verbose:
                         print(f"Saved: {heatmap_path}")
 
@@ -571,7 +571,7 @@ class TemporalAggregator:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="PRISM Temporal Aggregator - Aggregate granular temporal results",
+        description="Temporal Aggregator - Aggregate granular temporal results",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -586,7 +586,7 @@ Examples:
   python temporal_aggregator.py --group 3
 
   # Custom database path
-  python temporal_aggregator.py --group regime --db path/to/prism_temporal.db
+  python temporal_aggregator.py --group regime --db path/to/temporal.db
 
 Output:
   Saved to 06_output/temporal/summary/
@@ -604,7 +604,7 @@ Output:
         '--db',
         type=str,
         default=None,
-        help='Path to prism_temporal.db (default: 06_output/temporal/prism_temporal.db)'
+        help='Path to temporal.db (default: 06_output/temporal/temporal.db)'
     )
 
     parser.add_argument(

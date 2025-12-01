@@ -1,11 +1,11 @@
 """
-PRISM Engine - SQL Helper
+SQL Helper
 ========================
 Drop this in your Start/ folder.
 Import functions or run standalone to explore the database.
 
 Usage:
-    from prism_sql_helper import connect, top_indicators, indicator_history, regime_shifts
+    from sql_helper import connect, top_indicators, indicator_history, regime_shifts
     
     conn = connect()
     df = top_indicators(conn, window_start=2005)
@@ -22,15 +22,15 @@ from pathlib import Path
 
 def connect(db_path=None):
     """
-    Connect to the PRISM temporal database.
+    Connect to the temporal database.
     If no path provided, looks in default location.
     """
     if db_path is None:
         # Try common locations
         possible_paths = [
-            Path('../06_output/temporal/prism_temporal.db'),
-            Path('06_output/temporal/prism_temporal.db'),
-            Path('./prism_temporal.db'),
+            Path('../06_output/temporal/temporal.db'),
+            Path('06_output/temporal/temporal.db'),
+            Path('./temporal.db'),
         ]
         for p in possible_paths:
             if p.exists():
@@ -38,7 +38,7 @@ def connect(db_path=None):
                 break
     
     if db_path is None or not Path(db_path).exists():
-        print("Database not found. Specify path: connect('/path/to/prism_temporal.db')")
+        print("Database not found. Specify path: connect('/path/to/temporal.db')")
         return None
     
     conn = sqlite3.connect(db_path)
@@ -208,7 +208,7 @@ def export_full_analysis(conn, output_dir='.'):
 if __name__ == "__main__":
     print("""
     ╔═══════════════════════════════════════════════════════════════╗
-    ║              PRISM Engine - SQL Helper                        ║
+    ║              SQL Helper                        ║
     ╠═══════════════════════════════════════════════════════════════╣
     ║  Quick Start:                                                 ║
     ║                                                               ║

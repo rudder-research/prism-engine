@@ -1,5 +1,5 @@
 """
-PRISM Engine - Main Entry Point
+Main Entry Point
 ================================
 
 This is your front door. Run this to execute the full pipeline.
@@ -9,8 +9,8 @@ Usage:
     python main.py
     
     # Or in Colab/Python:
-    from main import run_prism
-    results = run_prism()
+    from main import run_analysis
+    results = run_analysis()
 """
 
 import sys
@@ -28,14 +28,14 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
-def run_prism(
+def run_analysis(
     data_path: str = None,
     output_dir: str = None,
     lenses: list = None,
     verbose: bool = True
 ):
     """
-    Run the full PRISM analysis pipeline.
+    Run the full analysis pipeline.
     
     Args:
         data_path: Path to data CSV (default: data/raw/master_panel.csv)
@@ -49,7 +49,7 @@ def run_prism(
     
     if verbose:
         print("="*60)
-        print("PRISM ENGINE")
+        print("ANALYSIS ENGINE")
         print("="*60)
         print(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print()
@@ -295,7 +295,7 @@ def list_lenses() -> list:
 
 def quick_test(n_lenses: int = 3) -> dict:
     """Run a quick test with just a few lenses."""
-    return run_prism(lenses=list_lenses()[:n_lenses], verbose=True)
+    return run_analysis(lenses=list_lenses()[:n_lenses], verbose=True)
 
 
 # =============================================================================
@@ -303,4 +303,4 @@ def quick_test(n_lenses: int = 3) -> dict:
 # =============================================================================
 
 if __name__ == "__main__":
-    results = run_prism()
+    results = run_analysis()

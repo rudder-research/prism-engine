@@ -11,7 +11,7 @@ class TestMagnitudeLens:
     """Test MagnitudeLens functionality."""
 
     def test_analyze_returns_required_keys(self, sample_panel_small):
-        from prism_engine.engine.lenses import MagnitudeLens
+        from engine.engine.lenses import MagnitudeLens
 
         lens = MagnitudeLens()
         result = lens.analyze(sample_panel_small)
@@ -27,7 +27,7 @@ class TestMagnitudeLens:
             assert key in result, f"Missing key: {key}"
 
     def test_contributions_sum_to_one(self, sample_panel_small):
-        from prism_engine.engine.lenses import MagnitudeLens
+        from engine.engine.lenses import MagnitudeLens
 
         lens = MagnitudeLens()
         result = lens.analyze(sample_panel_small)
@@ -38,7 +38,7 @@ class TestMagnitudeLens:
         assert abs(total - 1.0) < 0.01, f"Contributions sum to {total}, expected 1.0"
 
     def test_rank_indicators_returns_dataframe(self, sample_panel_small):
-        from prism_engine.engine.lenses import MagnitudeLens
+        from engine.engine.lenses import MagnitudeLens
 
         lens = MagnitudeLens()
         ranking = lens.rank_indicators(sample_panel_small)
@@ -49,7 +49,7 @@ class TestMagnitudeLens:
         assert "rank" in ranking.columns
 
     def test_ranking_is_sorted(self, sample_panel_small):
-        from prism_engine.engine.lenses import MagnitudeLens
+        from engine.engine.lenses import MagnitudeLens
 
         lens = MagnitudeLens()
         ranking = lens.rank_indicators(sample_panel_small)

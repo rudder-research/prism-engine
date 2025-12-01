@@ -1,15 +1,15 @@
 """
-PRISM Database Manager - SQLite interface for temporal analysis
+Database Manager - SQLite interface for temporal analysis
 ================================================================
 
-Provides SQLite storage for temporal PRISM results, replacing CSV as the
+Provides SQLite storage for temporal results, replacing CSV as the
 primary output format. Enables efficient querying of indicator histories,
 window comparisons, and regime stability analysis.
 
 Usage:
     from utils.db_manager import TemporalDB
 
-    db = TemporalDB('06_output/temporal/prism_temporal.db')
+    db = TemporalDB('06_output/temporal/temporal.db')
     db.init_schema()
 
     # Insert results
@@ -149,7 +149,7 @@ LENS_DESCRIPTIONS = {
 
 class TemporalDB:
     """
-    SQLite database manager for PRISM temporal analysis.
+    SQLite database manager for temporal analysis.
 
     Provides CRUD operations and analysis queries for temporal results.
     """

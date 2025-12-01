@@ -1,5 +1,5 @@
 """
-PRISM Temporal Analysis Runner
+Temporal Analysis Runner
 ==============================
 
 Easy-to-use script for running temporal (rolling window) analysis
@@ -22,7 +22,7 @@ CLI Usage:
 Performance Notes for 50-60+ Indicators:
 ----------------------------------------
 - Default uses fast lenses (magnitude, pca, influence, clustering)
-- For Chromebook: use StreamingTemporalPRISM for memory efficiency
+- For Chromebook: use StreamingTemporalEngine for memory efficiency
 - For Mac Mini: can use all lenses and finer step sizes
 - Consider step_months=0.5 for higher resolution on powerful machines
 """
@@ -84,7 +84,7 @@ def run_temporal_analysis(
     verbose: bool = True
 ) -> dict:
     """
-    Run temporal PRISM analysis on your data.
+    Run temporal analysis on your data.
 
     Args:
         panel: Your cleaned data panel (datetime index, indicator columns)
@@ -100,7 +100,7 @@ def run_temporal_analysis(
     Example:
         results = run_temporal_analysis(panel_clean, profile='chromebook')
     """
-    from temporal_analysis import TemporalPRISM, StreamingTemporalPRISM
+    from temporal_analysis import TemporalEngine, StreamingTemporalEngine
 
     # Get profile settings
     config = PERFORMANCE_PROFILES.get(profile, PERFORMANCE_PROFILES['standard'])
@@ -115,7 +115,7 @@ def run_temporal_analysis(
 
     if verbose:
         print("=" * 60)
-        print("PRISM TEMPORAL ANALYSIS")
+        print("TEMPORAL ANALYSIS")
         print("=" * 60)
         print(f"Profile:     {profile}")
         print(f"Window:      {window_years} year(s) ({window_days} days)")
@@ -126,7 +126,7 @@ def run_temporal_analysis(
         print()
 
     # Create analyzer
-    temporal = TemporalPRISM(panel, lenses=lenses)
+    temporal = TemporalEngine(panel, lenses=lenses)
 
     # Progress callback
     def progress(current, total):
@@ -240,7 +240,7 @@ def get_summary(results: dict) -> pd.DataFrame:
     - rank_change: Recent change (positive = improving)
     - stability: Consistency score
     """
-    from temporal_analysis import TemporalPRISM
+    from temporal_analysis import TemporalEngine
 
     rank_df = pd.DataFrame(results['rankings'], index=results['timestamps'])
 
@@ -338,7 +338,7 @@ def quick_start(panel: pd.DataFrame) -> tuple:
 # =============================================================================
 
 if __name__ == "__main__":
-    print("PRISM Temporal Analysis Runner")
+    print("Temporal Analysis Runner")
     print("=" * 40)
     print()
     print("Usage in Colab/Python:")

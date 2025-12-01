@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-PRISM Temporal Runner - Year-Based Windowed Analysis
-=====================================================
+Temporal Runner - Year-Based Windowed Analysis
+===============================================
 
-Run all 14 PRISM lenses across discrete time windows to track how
+Run all 14 lenses across discrete time windows to track how
 indicator importance changes over different periods.
 
 Usage (command line):
@@ -27,7 +27,7 @@ Usage (Python):
 
 Output (in 06_output/temporal/):
     Primary:
-        - prism_temporal.db : SQLite database with full results
+        - temporal.db : SQLite database with full results
 
     Optional (with --export-csv):
         - temporal_results_{increment}yr.csv : Long format with all windows
@@ -141,7 +141,7 @@ def run_single_lens(args: Tuple[str, pd.DataFrame]) -> Tuple[str, Optional[pd.Da
 
 class TemporalRunner:
     """
-    Run PRISM analysis across discrete time windows.
+    Run analysis across discrete time windows.
 
     Generates windows like: 2005-2010, 2010-2015, 2015-2020, etc.
     """
@@ -414,7 +414,7 @@ class TemporalRunner:
 
         if verbose:
             print("=" * 60)
-            print("PRISM TEMPORAL ANALYSIS")
+            print("TEMPORAL ANALYSIS")
             print("=" * 60)
             print(f"Start year:  {self.start_year}")
             print(f"End year:    {self.end_year}")
@@ -550,7 +550,7 @@ class TemporalRunner:
         # =================================================================
         # PRIMARY OUTPUT: SQLite Database
         # =================================================================
-        db_path = self.output_dir / "prism_temporal.db"
+        db_path = self.output_dir / "temporal.db"
         self.db = TemporalDB(str(db_path))
         self.db.init_schema()
 
@@ -627,7 +627,7 @@ class TemporalRunner:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="PRISM Temporal Analysis - Run lenses across time windows",
+        description="Temporal Analysis - Run lenses across time windows",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -646,7 +646,7 @@ Examples:
   python temporal_runner.py --start 2010 --end 2024 --increment 2 --lenses magnitude pca influence
 
 Output:
-  Primary: prism_temporal.db (SQLite database)
+  Primary: temporal.db (SQLite database)
   Optional: CSV files (with --export-csv flag)
         """
     )

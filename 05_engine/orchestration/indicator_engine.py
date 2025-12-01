@@ -1,5 +1,5 @@
 """
-Indicator Engine - High-level API for PRISM analysis
+Indicator Engine - High-level API for analysis
 """
 
 from typing import Dict, Any, Optional, List, Union
@@ -22,7 +22,7 @@ _PROJECT_ROOT = _SCRIPT_DIR.parent.parent
 
 class IndicatorEngine:
     """
-    High-level interface for PRISM indicator analysis.
+    High-level interface for indicator analysis.
 
     Provides a simple API to:
     1. Run multiple lenses
@@ -63,7 +63,7 @@ class IndicatorEngine:
         **kwargs
     ) -> Dict[str, Any]:
         """
-        Run full PRISM analysis.
+        Run full analysis.
 
         Args:
             df: Input DataFrame with indicators
@@ -86,7 +86,7 @@ class IndicatorEngine:
         else:
             selected_lenses = self.BASIC_LENSES
 
-        logger.info(f"Running PRISM analysis with {len(selected_lenses)} lenses...")
+        logger.info(f"Running analysis with {len(selected_lenses)} lenses...")
 
         # Run lenses
         lens_results = self.comparator.run_lenses(df, selected_lenses, **kwargs)
@@ -190,7 +190,7 @@ class IndicatorEngine:
             raise ValueError("No results to save. Run analyze() first.")
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        name = name or "prism_analysis"
+        name = name or "analysis"
 
         save_dir = self.output_dir / "latest"
         save_dir.mkdir(parents=True, exist_ok=True)
