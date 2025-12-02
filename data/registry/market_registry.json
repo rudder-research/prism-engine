@@ -1,0 +1,191 @@
+{
+    "SPY": {
+        "fetch_type": "yahoo",
+        "enabled": true,
+        "frequency": "daily",
+        "tables": {
+            "prices": "market_prices",
+            "dividends": "market_dividends",
+            "tri": "market_tri"
+        },
+        "use_column": "price",
+        "indicator_name": "SPY",
+        "notes": "S&P 500 ETF"
+    },
+    "QQQ": {
+        "fetch_type": "yahoo",
+        "enabled": true,
+        "frequency": "daily",
+        "tables": {
+            "prices": "market_prices"
+        },
+        "use_column": "price",
+        "indicator_name": "QQQ",
+        "notes": "NASDAQ-100 ETF"
+    },
+    "IWM": {
+        "fetch_type": "yahoo",
+        "enabled": true,
+        "frequency": "daily",
+        "tables": {
+            "prices": "market_prices"
+        },
+        "use_column": "price",
+        "indicator_name": "IWM",
+        "notes": "Russell 2000 ETF"
+    },
+    "DXY": {
+        "fetch_type": "yahoo",
+        "enabled": true,
+        "frequency": "daily",
+        "tables": {
+            "prices": "market_prices"
+        },
+        "use_column": "price",
+        "indicator_name": "DXY",
+        "notes": "US Dollar Index"
+    },
+    "VIX": {
+        "fetch_type": "yahoo",
+        "enabled": true,
+        "frequency": "daily",
+        "tables": {
+            "prices": "market_prices"
+        },
+        "use_column": "price",
+        "indicator_name": "VIX",
+        "notes": "CBOE Volatility Index"
+    },
+    "GLD": {
+        "fetch_type": "yahoo",
+        "enabled": true,
+        "frequency": "daily",
+        "tables": {
+            "prices": "market_prices"
+        },
+        "use_column": "price",
+        "indicator_name": "GLD",
+        "notes": "Gold ETF"
+    },
+    "SLV": {
+        "fetch_type": "yahoo",
+        "enabled": true,
+        "frequency": "daily",
+        "tables": {
+            "prices": "market_prices"
+        },
+        "use_column": "price",
+        "indicator_name": "SLV",
+        "notes": "Silver ETF"
+    },
+    "USO": {
+        "fetch_type": "yahoo",
+        "enabled": true,
+        "frequency": "daily",
+        "tables": {
+            "prices": "market_prices"
+        },
+        "use_column": "price",
+        "indicator_name": "USO",
+        "notes": "Oil ETF"
+    },
+    "BND": {
+        "fetch_type": "yahoo",
+        "enabled": true,
+        "frequency": "daily",
+        "tables": {
+            "prices": "market_prices"
+        },
+        "use_column": "price",
+        "indicator_name": "BND",
+        "notes": "Total Bond Market ETF"
+    },
+    "TLT": {
+        "fetch_type": "yahoo",
+        "enabled": true,
+        "frequency": "daily",
+        "tables": {
+            "prices": "market_prices"
+        },
+        "use_column": "price",
+        "indicator_name": "TLT",
+        "notes": "20+ Year Treasury Bond ETF"
+    },
+    "SHY": {
+        "fetch_type": "yahoo",
+        "enabled": true,
+        "frequency": "daily",
+        "tables": {
+            "prices": "market_prices"
+        },
+        "use_column": "price",
+        "indicator_name": "SHY",
+        "notes": "1-3 Year Treasury Bond ETF"
+    },
+    "IEF": {
+        "fetch_type": "yahoo",
+        "enabled": true,
+        "frequency": "daily",
+        "tables": {
+            "prices": "market_prices"
+        },
+        "use_column": "price",
+        "indicator_name": "IEF",
+        "notes": "7-10 Year Treasury Bond ETF"
+    },
+    "TIP": {
+        "fetch_type": "yahoo",
+        "enabled": true,
+        "frequency": "daily",
+        "tables": {
+            "prices": "market_prices"
+        },
+        "use_column": "price",
+        "indicator_name": "TIP",
+        "notes": "TIPS Bond ETF"
+    },
+    "LQD": {
+        "fetch_type": "yahoo",
+        "enabled": true,
+        "frequency": "daily",
+        "tables": {
+            "prices": "market_prices"
+        },
+        "use_column": "price",
+        "indicator_name": "LQD",
+        "notes": "Investment Grade Corporate Bond ETF"
+    },
+    "HYG": {
+        "fetch_type": "yahoo",
+        "enabled": true,
+        "frequency": "daily",
+        "tables": {
+            "prices": "market_prices"
+        },
+        "use_column": "price",
+        "indicator_name": "HYG",
+        "notes": "High Yield Corporate Bond ETF"
+    },
+    "XLU": {
+        "fetch_type": "yahoo",
+        "enabled": true,
+        "frequency": "daily",
+        "tables": {
+            "prices": "market_prices"
+        },
+        "use_column": "price",
+        "indicator_name": "XLU",
+        "notes": "Utilities Sector ETF"
+    },
+    "BCOM": {
+        "fetch_type": "yahoo",
+        "enabled": true,
+        "frequency": "daily",
+        "tables": {
+            "prices": "market_prices"
+        },
+        "use_column": "price",
+        "indicator_name": "BCOM",
+        "notes": "Bloomberg Commodity Index"
+    }
+}

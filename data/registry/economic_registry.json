@@ -1,0 +1,189 @@
+{
+    "DGS10": {
+        "fetch_type": "fred",
+        "enabled": true,
+        "frequency": "daily",
+        "table": "econ_values",
+        "code": "DGS10",
+        "use_column": "value",
+        "indicator_name": "dgs10",
+        "transformations": [],
+        "notes": "10-Year Treasury Constant Maturity Rate"
+    },
+    "DGS2": {
+        "fetch_type": "fred",
+        "enabled": true,
+        "frequency": "daily",
+        "table": "econ_values",
+        "code": "DGS2",
+        "use_column": "value",
+        "indicator_name": "dgs2",
+        "transformations": [],
+        "notes": "2-Year Treasury Constant Maturity Rate"
+    },
+    "DGS3MO": {
+        "fetch_type": "fred",
+        "enabled": true,
+        "frequency": "daily",
+        "table": "econ_values",
+        "code": "DGS3MO",
+        "use_column": "value",
+        "indicator_name": "dgs3mo",
+        "transformations": [],
+        "notes": "3-Month Treasury Constant Maturity Rate"
+    },
+    "T10Y2Y": {
+        "fetch_type": "fred",
+        "enabled": true,
+        "frequency": "daily",
+        "table": "econ_values",
+        "code": "T10Y2Y",
+        "use_column": "value",
+        "indicator_name": "t10y2y",
+        "transformations": [],
+        "notes": "10-Year Treasury Minus 2-Year Treasury Spread"
+    },
+    "T10Y3M": {
+        "fetch_type": "fred",
+        "enabled": true,
+        "frequency": "daily",
+        "table": "econ_values",
+        "code": "T10Y3M",
+        "use_column": "value",
+        "indicator_name": "t10y3m",
+        "transformations": [],
+        "notes": "10-Year Treasury Minus 3-Month Treasury Spread"
+    },
+    "CPIAUCSL": {
+        "fetch_type": "fred",
+        "enabled": true,
+        "frequency": "monthly",
+        "table": "econ_values",
+        "code": "CPIAUCSL",
+        "use_column": "value",
+        "indicator_name": "cpi",
+        "transformations": ["yoy"],
+        "notes": "Consumer Price Index for All Urban Consumers"
+    },
+    "CPILFESL": {
+        "fetch_type": "fred",
+        "enabled": true,
+        "frequency": "monthly",
+        "table": "econ_values",
+        "code": "CPILFESL",
+        "use_column": "value",
+        "indicator_name": "cpi_core",
+        "transformations": ["yoy"],
+        "notes": "Core CPI (excluding food and energy)"
+    },
+    "PPIACO": {
+        "fetch_type": "fred",
+        "enabled": true,
+        "frequency": "monthly",
+        "table": "econ_values",
+        "code": "PPIACO",
+        "use_column": "value",
+        "indicator_name": "ppi",
+        "transformations": ["yoy"],
+        "notes": "Producer Price Index for All Commodities"
+    },
+    "UNRATE": {
+        "fetch_type": "fred",
+        "enabled": true,
+        "frequency": "monthly",
+        "table": "econ_values",
+        "code": "UNRATE",
+        "use_column": "value",
+        "indicator_name": "unrate",
+        "transformations": [],
+        "notes": "Unemployment Rate"
+    },
+    "PAYEMS": {
+        "fetch_type": "fred",
+        "enabled": true,
+        "frequency": "monthly",
+        "table": "econ_values",
+        "code": "PAYEMS",
+        "use_column": "value",
+        "indicator_name": "payrolls",
+        "transformations": ["mom_change"],
+        "notes": "Total Nonfarm Payrolls"
+    },
+    "INDPRO": {
+        "fetch_type": "fred",
+        "enabled": true,
+        "frequency": "monthly",
+        "table": "econ_values",
+        "code": "INDPRO",
+        "use_column": "value",
+        "indicator_name": "industrial_production",
+        "transformations": ["yoy"],
+        "notes": "Industrial Production Index"
+    },
+    "HOUST": {
+        "fetch_type": "fred",
+        "enabled": true,
+        "frequency": "monthly",
+        "table": "econ_values",
+        "code": "HOUST",
+        "use_column": "value",
+        "indicator_name": "housing_starts",
+        "transformations": [],
+        "notes": "Housing Starts: Total"
+    },
+    "PERMIT": {
+        "fetch_type": "fred",
+        "enabled": true,
+        "frequency": "monthly",
+        "table": "econ_values",
+        "code": "PERMIT",
+        "use_column": "value",
+        "indicator_name": "permits",
+        "transformations": [],
+        "notes": "Building Permits"
+    },
+    "M2SL": {
+        "fetch_type": "fred",
+        "enabled": true,
+        "frequency": "monthly",
+        "table": "econ_values",
+        "code": "M2SL",
+        "use_column": "value",
+        "indicator_name": "m2",
+        "transformations": ["yoy"],
+        "notes": "M2 Money Supply"
+    },
+    "WALCL": {
+        "fetch_type": "fred",
+        "enabled": true,
+        "frequency": "weekly",
+        "table": "econ_values",
+        "code": "WALCL",
+        "use_column": "value",
+        "indicator_name": "fed_balance_sheet",
+        "transformations": ["yoy"],
+        "notes": "Federal Reserve Total Assets"
+    },
+    "ANFCI": {
+        "fetch_type": "fred",
+        "enabled": true,
+        "frequency": "weekly",
+        "table": "econ_values",
+        "code": "ANFCI",
+        "use_column": "value",
+        "indicator_name": "anfci",
+        "transformations": [],
+        "notes": "Chicago Fed National Financial Conditions Index"
+    },
+    "NFCI": {
+        "fetch_type": "fred",
+        "enabled": true,
+        "frequency": "weekly",
+        "table": "econ_values",
+        "code": "NFCI",
+        "use_column": "value",
+        "indicator_name": "nfci",
+        "transformations": [],
+        "notes": "Chicago Fed National Financial Conditions Index"
+    }
+}

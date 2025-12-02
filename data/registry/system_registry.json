@@ -1,0 +1,17 @@
+{
+    "paths": {
+        "data_raw": "data/raw",
+        "data_clean": "data/cleaned",
+        "db_path": "data/sql/prism.db",
+        "logs_dir": "logs"
+    },
+    "registries": {
+        "market": "data/registry/market_registry.json",
+        "economic": "data/registry/economic_registry.json"
+    },
+    "panel": {
+        "master_panel_path": "data/panels/master_panel.csv",
+        "min_rows": 100,
+        "max_nan_ratio": 0.5
+    }
+}
