@@ -10,6 +10,12 @@ Usage:
     engine = IndicatorEngine()
     results = engine.analyze(panel_data, mode="basic")
     print(results["top_indicators"])
+
+    # Registry-driven engines
+    from engine import PrismMacroEngine, PrismMarketEngine, PrismStressEngine, PrismMLEngine
+
+    macro = PrismMacroEngine()
+    results = macro.analyze()
 """
 
 __version__ = "0.1.0"
@@ -65,6 +71,23 @@ def __getattr__(name):
         engine = import_module("05_engine")
         return engine.get_lens
 
+    # Registry-driven PRISM engines
+    elif name == "PrismMacroEngine":
+        from .prism_macro_engine import PrismMacroEngine
+        return PrismMacroEngine
+
+    elif name == "PrismMarketEngine":
+        from .prism_market_engine import PrismMarketEngine
+        return PrismMarketEngine
+
+    elif name == "PrismStressEngine":
+        from .prism_stress_engine import PrismStressEngine
+        return PrismStressEngine
+
+    elif name == "PrismMLEngine":
+        from .prism_ml_engine import PrismMLEngine
+        return PrismMLEngine
+
     raise AttributeError(f"module 'engine' has no attribute '{name}'")
 
 
@@ -77,4 +100,9 @@ __all__ = [
     'IndicatorEngine',
     'LensComparator',
     'get_lens',
+    # Registry-driven engines
+    'PrismMacroEngine',
+    'PrismMarketEngine',
+    'PrismStressEngine',
+    'PrismMLEngine',
 ]

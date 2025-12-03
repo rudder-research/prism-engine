@@ -1,0 +1,65 @@
+{
+    "version": "1.0.0",
+    "description": "PRISM Engine System Registry - Central configuration for panel paths and metadata",
+
+    "panel_master_path": "data/panels/master_panel.csv",
+    "panel_format": "csv",
+
+    "panels": {
+        "default": {
+            "path": "data/panels/master_panel.csv",
+            "format": "csv",
+            "description": "Primary US market and economic indicators panel"
+        },
+        "climate": {
+            "path": "data/panels/master_panel_climate.csv",
+            "format": "csv",
+            "description": "Climate-related indicators panel"
+        },
+        "global": {
+            "path": "data/panels/master_panel_global.csv",
+            "format": "csv",
+            "description": "International market indicators panel"
+        },
+        "test": {
+            "path": "data/panels/master_panel_test1.csv",
+            "format": "csv",
+            "description": "Test/validation panel"
+        }
+    },
+
+    "registries": {
+        "metrics": "data/registry/metric_registry.json",
+        "system": "data/registry/system_registry.json"
+    },
+
+    "column_mappings": {
+        "date_column": "date",
+        "index_column": null
+    },
+
+    "engine_defaults": {
+        "macro": {
+            "indicators": ["cpi", "cpi_core", "ppi", "unrate", "payrolls", "industrial_production", "housing_starts", "permits", "m2", "fed_balance_sheet"],
+            "description": "Macroeconomic indicators for business cycle analysis"
+        },
+        "market": {
+            "indicators": ["spy", "qqq", "iwm", "vix", "dxy", "gld", "slv", "uso", "bnd", "tlt", "shy", "ief", "tip", "lqd", "hyg", "xlu", "bcom"],
+            "description": "Market-based indicators including equities, volatility, commodities, and fixed income"
+        },
+        "stress": {
+            "indicators": ["vix", "t10y2y", "t10y3m", "nfci", "anfci", "hyg", "lqd"],
+            "description": "Financial stress and credit spread indicators"
+        },
+        "rates": {
+            "indicators": ["dgs10", "dgs2", "dgs3mo", "t10y2y", "t10y3m"],
+            "description": "Interest rate and yield curve indicators"
+        }
+    },
+
+    "data_options": {
+        "fill_method": "ffill_then_bfill",
+        "date_format": "%Y-%m-%d",
+        "frequency": "daily"
+    }
+}
