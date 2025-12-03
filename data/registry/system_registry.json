@@ -1,0 +1,49 @@
+{
+    "version": "1.0.0",
+    "description": "PRISM System Registry - Global configuration for all data systems",
+    "systems": {
+        "finance": {
+            "enabled": true,
+            "description": "Financial market data including equities, bonds, commodities, and currencies",
+            "default_frequency": "daily",
+            "registries": [
+                "market_registry.json",
+                "economic_registry.json"
+            ]
+        },
+        "climate": {
+            "enabled": false,
+            "description": "Climate and environmental data",
+            "default_frequency": "monthly",
+            "registries": []
+        },
+        "chemistry": {
+            "enabled": false,
+            "description": "Chemical and materials science data",
+            "default_frequency": "daily",
+            "registries": []
+        }
+    },
+    "data_sources": {
+        "yahoo": {
+            "name": "Yahoo Finance",
+            "type": "market",
+            "enabled": true,
+            "rate_limit_per_minute": 2000,
+            "requires_api_key": false
+        },
+        "fred": {
+            "name": "Federal Reserve Economic Data",
+            "type": "economic",
+            "enabled": true,
+            "rate_limit_per_minute": 120,
+            "requires_api_key": true,
+            "api_key_env_var": "FRED_API"
+        }
+    },
+    "defaults": {
+        "start_date": "2000-01-01",
+        "date_format": "YYYY-MM-DD",
+        "timezone": "UTC"
+    }
+}
