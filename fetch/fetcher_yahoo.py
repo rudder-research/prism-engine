@@ -7,7 +7,8 @@ from typing import Optional, Any, List
 import pandas as pd
 import logging
 
-from .fetcher_base import BaseFetcher
+from fetch.fetcher_yahoo import YahooFetcher
+
 
 logger = logging.getLogger(__name__)
 

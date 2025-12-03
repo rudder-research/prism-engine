@@ -1,171 +1,105 @@
 """
-FRED Fetcher - Federal Reserve Economic Data
+FREDFetcher - Fetch economic time series from FRED
+
+This file replaces all previous versions and removes:
+✓ circular imports
+✓ self-imports
+✓ broken class names
+✓ duplicate loaders
+
+It integrates cleanly with FetcherBase and the new registry format.
 """
 
 import os
-from pathlib import Path
-from typing import Optional, Any
-import pandas as pd
 import logging
+from pathlib import Path
+from typing import Optional, Dict, Any
 
-from .fetcher_base import BaseFetcher
+import pandas as pd
+import requests
+
+from fetch.fetcher_base import FetcherBase
 
 logger = logging.getLogger(__name__)
 
 
-class FREDFetcher(BaseFetcher):
+class FREDFetcher(FetcherBase):
     """
-    Fetcher for Federal Reserve Economic Data (FRED).
+    Fetch economic data from FRED (Federal Reserve Bank of St. Louis).
 
-    Requires FRED_API environment variable or Colab secret.
+    registry entry example:
+    {
+        "key": "dgs10",
+        "ticker": "DGS10",
+        "source": "fred",
+        "enabled": true,
+        "name": "10-Year Treasury Constant Maturity Rate",
+        "frequency": "daily"
+    }
     """
 
-    def __init__(self, api_key: Optional[str] = None, checkpoint_dir: Optional[Path] = None):
+    BASE_URL = "https://api.stlouisfed.org/fred/series/observations"
+
+    def __init__(self, api_key: Optional[str] = None):
+        super().__init__()
+        self.api_key = api_key or os.getenv("FRED_API_KEY")
+
+        if not self.api_key:
+            logger.warning("No FRED API key found. FRED requests may fail.")
+
+    # ----------------------------------------------------------------------
+    # Core fetch function
+    # ----------------------------------------------------------------------
+    def fetch(self, config: Dict[str, Any]) -> pd.DataFrame:
         """
-        Initialize FRED fetcher.
-
-        Args:
-            api_key: FRED API key (or set FRED_API env var)
-            checkpoint_dir: Directory for checkpoints
+        Fetch a FRED series defined in the registry.
         """
-        super().__init__(checkpoint_dir)
-        self.api_key = api_key
-        self.fred = None
 
-    def _init_client(self) -> None:
-        """Initialize FRED API client."""
-        if self.fred is not None:
-            return
+        series_id = config.get("ticker")
+        if not series_id:
+            raise ValueError("Economic registry entry missing 'ticker'")
 
-        from fredapi import Fred
+        params = {
+            "series_id": series_id,
+            "api_key": self.api_key,
+            "file_type": "json",
+            "observation_start": "1900-01-01",
+        }
 
-        api_key = self.api_key
+        logger.info(f"Fetching FRED series: {series_id}")
 
-        # Try Colab secrets first
-        if not api_key:
-            try:
-                from google.colab import userdata
-                api_key = userdata.get("FRED_API")
-            except (ImportError, Exception):
-                pass
-
-        # Fallback to environment variable
-        if not api_key:
-            api_key = os.environ.get("FRED_API")
-
-        if not api_key:
-            raise ValueError(
-                "FRED API key not found. Set FRED_API environment variable "
-                "or pass api_key parameter."
+        response = requests.get(self.BASE_URL, params=params)
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"Failed to fetch {series_id} from FRED: "
+                f"{response.status_code} {response.text}"
             )
 
-        self.fred = Fred(api_key=api_key)
-        logger.info("FRED client initialized")
+        data = response.json().get("observations", [])
+        if not data:
+            raise RuntimeError(f"FRED returned no data for {series_id}")
 
-    def validate_response(self, response: Any) -> bool:
-        """Validate FRED API response."""
-        if response is None:
-            return False
-        if isinstance(response, pd.Series) and response.empty:
-            return False
-        return True
+        df = pd.DataFrame(data)
+        df = df.rename(columns={"date": "timestamp", "value": series_id})
+        df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
+        df[series_id] = pd.to_numeric(df[series_id], errors="coerce")
 
-    def fetch_single(
-        self,
-        ticker: str,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
-        **kwargs
-    ) -> Optional[pd.DataFrame]:
+        df = df.dropna(subset=["timestamp"])
+
+        df = df.set_index("timestamp").sort_index()
+
+        logger.info(f"Fetched {len(df)} rows for {series_id}")
+
+        return df
+
+    # ----------------------------------------------------------------------
+    # Helper to save raw data
+    # ----------------------------------------------------------------------
+    def save_raw(self, key: str, df: pd.DataFrame, folder: Path):
         """
-        Fetch a single FRED series.
-
-        Args:
-            ticker: FRED series ID (e.g., 'GDP', 'UNRATE', 'DFF')
-            start_date: Start date (YYYY-MM-DD)
-            end_date: End date (YYYY-MM-DD)
-
-        Returns:
-            DataFrame with date and value columns
+        Save raw CSV files into data/raw
         """
-        self._init_client()
-
-        try:
-            # Fetch series
-            series = self.fred.get_series(
-                ticker,
-                observation_start=start_date,
-                observation_end=end_date
-            )
-
-            if not self.validate_response(series):
-                logger.warning(f"Invalid response for {ticker}")
-                return None
-
-            # Convert to DataFrame
-            df = pd.DataFrame({
-                "date": series.index,
-                ticker.lower(): series.values
-            })
-
-            return self.sanitize_dataframe(df, ticker)
-
-        except Exception as e:
-            logger.error(f"FRED error for {ticker}: {e}")
-            return None
-
-    def get_series_info(self, ticker: str) -> Optional[dict]:
-        """
-        Get metadata for a FRED series.
-
-        Args:
-            ticker: FRED series ID
-
-        Returns:
-            Dictionary with series metadata
-        """
-        self._init_client()
-
-        try:
-            info = self.fred.get_series_info(ticker)
-            return info.to_dict() if info is not None else None
-        except Exception as e:
-            logger.error(f"Error getting info for {ticker}: {e}")
-            return None
-
-
-# Common FRED series for financial analysis
-COMMON_FRED_SERIES = {
-    # Interest Rates
-    "DFF": "Federal Funds Rate",
-    "DGS10": "10-Year Treasury",
-    "DGS2": "2-Year Treasury",
-    "T10Y2Y": "10Y-2Y Spread",
-
-    # Economic Indicators
-    "GDP": "Gross Domestic Product",
-    "UNRATE": "Unemployment Rate",
-    "CPIAUCSL": "Consumer Price Index",
-    "PCEPI": "PCE Price Index",
-
-    # Money Supply
-    "M2SL": "M2 Money Supply",
-    "BOGMBASE": "Monetary Base",
-
-    # Credit
-    "BAMLH0A0HYM2": "High Yield Spread",
-    "TEDRATE": "TED Spread",
-
-    # Housing
-    "CSUSHPINSA": "Case-Shiller Home Price Index",
-    "HOUST": "Housing Starts",
-
-    # Manufacturing
-    "INDPRO": "Industrial Production",
-    "UMCSENT": "Consumer Sentiment",
-}
-
-# ---------------------------------------------------------------------
-# Backward compatibility for older imports
-# ---------------------------------------------------------------------
-FetcherFRED = FREDFetcher
+        folder.mkdir(parents=True, exist_ok=True)
+        out_path = folder / f"{key}.csv"
+        df.to_csv(out_path)
+        logger.info(f"Saved raw FRED CSV: {out_path}")

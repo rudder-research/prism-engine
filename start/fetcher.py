@@ -1,58 +1,39 @@
 """
-Data Fetcher (start/ entry point)
-=======================================
-
-This is a convenience wrapper that imports from the main fetcher module.
-All functionality is in the root fetcher.py file.
-
-Usage:
-    from start.fetcher import fetch_all, fetch_equities, quick_fetch
-
-    panel = fetch_all()
-    equities = fetch_equities()
+PRISM Fetcher Launcher
+Uses modern fetchers from fetch/ directory
 """
 
-import sys
-from pathlib import Path
+import argparse
+import logging
+from fetch.fetcher_yahoo import YahooFetcher
+from fetch.fetcher_fred import FredFetcher
 
-# Add parent directory to path for imports
-_start_dir = Path(__file__).parent.resolve()
-_project_root = _start_dir.parent
-sys.path.insert(0, str(_project_root))
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Re-export everything from root fetcher
-from fetcher import (
-    UNIVERSE,
-    FRED_SERIES,
-    fetch_yahoo,
-    fetch_fred,
-    fetch_equities,
-    fetch_fixed_income,
-    fetch_commodities,
-    fetch_currencies,
-    fetch_volatility,
-    fetch_macro,
-    fetch_all,
-    fetch_custom,
-    list_universe,
-    add_ticker,
-    quick_fetch,
-)
 
-__all__ = [
-    'UNIVERSE',
-    'FRED_SERIES',
-    'fetch_yahoo',
-    'fetch_fred',
-    'fetch_equities',
-    'fetch_fixed_income',
-    'fetch_commodities',
-    'fetch_currencies',
-    'fetch_volatility',
-    'fetch_macro',
-    'fetch_all',
-    'fetch_custom',
-    'list_universe',
-    'add_ticker',
-    'quick_fetch',
-]
+def fetch_market():
+    logger.info("=== Fetching MARKET data ===")
+    yf = YahooFetcher()
+    yf.fetch_all()
+
+
+def fetch_economic():
+    logger.info("=== Fetching ECONOMIC data ===")
+    ff = FredFetcher()
+    ff.fetch_all()
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="PRISM Unified Fetcher")
+    parser.add_argument("--market", action="store_true", help="Fetch market data")
+    parser.add_argument("--economic", action="store_true", help="Fetch economic data")
+    parser.add_argument("--all", action="store_true", help="Fetch all datasets")
+
+    args = parser.parse_args()
+
+    if args.all or args.market:
+        fetch_market()
+
+    if args.all or args.economic:
+        fetch_economic()
