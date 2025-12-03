@@ -1,4 +1,3 @@
-✅ FINAL README.md — Prism Engines
 # Prism Engines
 **Translating liquidity, macro, and behavioral momentum into a unified 3-D model of market equilibrium — a behavioral geometry of cycles revealing when forces align, diverge, or break.**
 
