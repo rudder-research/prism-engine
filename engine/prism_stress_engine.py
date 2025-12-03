@@ -1,17 +1,16 @@
 """
-PRISM Stress Engine - Financial Stress Analysis
+PRISM Stress Engine - Stress Testing and Scenario Analysis
 
-Analyzes financial stress indicators (VIX, credit spreads, yield curve, etc.)
-using registry-driven panel loading and the PRISM lens framework.
-
-This engine focuses on identifying financial stress conditions and systemic risk.
+This engine focuses on stress testing and scenario analysis across both
+economic and market data. It uses registry-driven configuration to load
+panel data and interpret columns.
 
 Usage:
-    from engine.prism_stress_engine import PrismStressEngine
+    from engine import PrismStressEngine
 
     engine = PrismStressEngine()
     results = engine.analyze()
-    stress_level = engine.get_stress_score()
+    print(results['stress_scenarios'])
 """
 
 import logging
@@ -19,494 +18,422 @@ from typing import Dict, Any, Optional, List, Tuple
 from pathlib import Path
 import pandas as pd
 import numpy as np
+from datetime import datetime
 
-# Add parent directory to path for imports
 import sys
-_ENGINE_DIR = Path(__file__).parent.resolve()
-_PROJECT_ROOT = _ENGINE_DIR.parent
-if str(_PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(_PROJECT_ROOT))
+_pkg_root = Path(__file__).parent.parent
+if str(_pkg_root) not in sys.path:
+    sys.path.insert(0, str(_pkg_root))
 
-from utils.panel_loader import (
-    load_panel,
-    get_registry,
-    get_engine_indicators,
-    get_panel_path,
-    PanelLoadError,
-    RegistryError
-)
+from utils.registry import RegistryManager, load_panel, get_engine_config
 
 logger = logging.getLogger(__name__)
 
 
 class PrismStressEngine:
     """
-    PRISM Engine for Financial Stress Analysis.
+    Engine for stress testing and scenario analysis.
 
-    Analyzes stress indicators to identify:
-    - Overall financial stress levels
-    - Yield curve inversions
-    - Credit spread widening
-    - Volatility regimes
-    - Systemic risk signals
+    This engine:
+    - Loads panel data from registry-specified paths
+    - Analyzes both economic and market data
+    - Provides stress testing and scenario analysis methods
     """
 
-    # Engine metadata
     name = "stress"
-    description = "Financial stress analysis engine"
-    version = "1.0.0"
+    description = "Stress testing and scenario analysis engine"
 
-    # Stress indicator categories
-    STRESS_CATEGORIES = {
-        "volatility": ["vix"],
-        "yield_curve": ["t10y2y", "t10y3m"],
-        "financial_conditions": ["nfci", "anfci"],
-        "credit": ["hyg", "lqd"]
-    }
-
-    # Thresholds for stress levels
-    THRESHOLDS = {
-        "vix": {"low": 15, "medium": 20, "high": 30, "extreme": 40},
-        "t10y2y": {"inverted": 0, "flat": 0.25},
-        "nfci": {"tight": 0, "very_tight": 0.5},
-        "anfci": {"tight": 0, "very_tight": 0.5}
+    # Historical stress events for reference
+    HISTORICAL_EVENTS = {
+        'gfc_2008': {
+            'name': 'Global Financial Crisis',
+            'start': '2008-09-01',
+            'end': '2009-03-31',
+        },
+        'covid_2020': {
+            'name': 'COVID-19 Crash',
+            'start': '2020-02-19',
+            'end': '2020-03-23',
+        },
+        'dot_com_2000': {
+            'name': 'Dot-Com Bubble',
+            'start': '2000-03-10',
+            'end': '2002-10-09',
+        },
+        'rate_hike_2022': {
+            'name': '2022 Rate Hike Cycle',
+            'start': '2022-01-01',
+            'end': '2022-10-31',
+        },
     }
 
     def __init__(
         self,
-        panel_name: str = "default",
-        custom_indicators: Optional[List[str]] = None,
+        project_root: Optional[Path] = None,
         config: Optional[Dict] = None
     ):
         """
-        Initialize the Stress Engine.
+        Initialize the stress engine.
 
         Args:
-            panel_name: Panel to load from registry ("default", "climate", etc.)
-            custom_indicators: Override default stress indicators
-            config: Additional configuration options
+            project_root: Optional project root path
+            config: Optional configuration overrides
         """
-        self.panel_name = panel_name
+        self.registry = RegistryManager(project_root)
         self.config = config or {}
+
+        # Get default config from registry
+        self._default_config = self.registry.get_engine_config() or {}
         self._panel: Optional[pd.DataFrame] = None
-        self._results: Optional[Dict] = None
+        self._last_results: Optional[Dict] = None
 
-        # Get indicators from registry or use custom
-        if custom_indicators is not None:
-            self.indicators = custom_indicators
-        else:
-            self.indicators = get_engine_indicators("stress")
+    @property
+    def panel(self) -> pd.DataFrame:
+        """Lazy-load the panel data."""
+        if self._panel is None:
+            self._panel = self._load_panel()
+        return self._panel
 
-        logger.info(f"PrismStressEngine initialized with {len(self.indicators)} indicators")
-
-    def load_data(
-        self,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
-        reload: bool = False
-    ) -> pd.DataFrame:
+    def _load_panel(self) -> pd.DataFrame:
         """
-        Load panel data using registry configuration.
-
-        Args:
-            start_date: Optional start date filter (YYYY-MM-DD)
-            end_date: Optional end date filter (YYYY-MM-DD)
-            reload: Force reload even if already loaded
+        Load full panel data (both economic and market).
 
         Returns:
-            DataFrame with stress indicators
+            Full DataFrame with all available series
         """
-        if self._panel is not None and not reload:
-            return self._panel
+        # Load from registry-specified path
+        full_panel = self.registry.load_panel(panel_type='master')
 
-        try:
-            self._panel = load_panel(
-                panel_name=self.panel_name,
-                columns=self.indicators,
-                start_date=start_date,
-                end_date=end_date,
-                fill_na=True
-            )
-            logger.info(f"Loaded stress panel: {self._panel.shape}")
-            return self._panel
+        logger.info(f"Loaded {len(full_panel.columns)} series from panel for stress testing")
+        return full_panel
 
-        except (PanelLoadError, RegistryError) as e:
-            logger.error(f"Failed to load stress panel: {e}")
-            raise
+    def reload_panel(self) -> pd.DataFrame:
+        """Force reload of panel data."""
+        self._panel = None
+        return self.panel
 
     def analyze(
         self,
-        df: Optional[pd.DataFrame] = None,
-        lenses: Optional[List[str]] = None,
+        scenarios: Optional[List[str]] = None,
+        custom_scenarios: Optional[Dict[str, Dict]] = None,
         **kwargs
     ) -> Dict[str, Any]:
         """
-        Run stress analysis using PRISM lenses.
+        Run stress analysis.
 
         Args:
-            df: Optional DataFrame (loads from registry if None)
-            lenses: List of lenses to run (uses defaults if None)
-            **kwargs: Additional parameters for lenses
+            scenarios: List of historical scenario names to analyze
+            custom_scenarios: Custom scenario definitions
+            **kwargs: Additional analysis parameters
 
         Returns:
-            Dictionary with analysis results
+            Dictionary with stress analysis results
         """
-        # Load data if not provided
-        if df is None:
-            df = self.load_data()
+        df = self.panel.copy()
 
-        if df is None or df.empty:
-            return {"error": "No data available for analysis"}
+        # Use all historical scenarios if none specified
+        if scenarios is None:
+            scenarios = list(self.HISTORICAL_EVENTS.keys())
 
-        # Default lenses for stress analysis
-        if lenses is None:
-            lenses = ["magnitude", "anomaly", "regime"]
+        results = {
+            'timestamp': datetime.now().isoformat(),
+            'engine': self.name,
+            'n_series': len(df.columns),
+            'n_observations': len(df),
+            'date_range': {
+                'start': str(df.index.min()) if len(df) > 0 else None,
+                'end': str(df.index.max()) if len(df) > 0 else None,
+            },
+        }
 
-        # Import analysis components
-        try:
-            from loader import run_lens, compute_consensus
-        except ImportError:
-            logger.warning("Loader not available, using basic analysis")
-            return self._basic_analysis(df)
+        # Analyze historical stress scenarios
+        results['historical_scenarios'] = {}
+        for scenario_key in scenarios:
+            if scenario_key in self.HISTORICAL_EVENTS:
+                scenario = self.HISTORICAL_EVENTS[scenario_key]
+                results['historical_scenarios'][scenario_key] = self._analyze_scenario(
+                    df, scenario['start'], scenario['end'], scenario['name']
+                )
 
-        # Run lenses
-        results = {}
-        for lens_name in lenses:
-            try:
-                value_cols = [c for c in df.columns if c != "date"]
-                panel_data = df[value_cols]
-                results[lens_name] = run_lens(lens_name, panel_data)
-                logger.info(f"Completed {lens_name} lens")
-            except Exception as e:
-                logger.warning(f"Lens {lens_name} failed: {e}")
-                results[lens_name] = {"error": str(e)}
+        # Analyze custom scenarios
+        if custom_scenarios:
+            results['custom_scenarios'] = {}
+            for name, params in custom_scenarios.items():
+                results['custom_scenarios'][name] = self._analyze_scenario(
+                    df, params.get('start'), params.get('end'), name
+                )
 
-        # Compute consensus if multiple lenses succeeded
-        valid_results = {k: v for k, v in results.items() if "error" not in v}
-        if len(valid_results) > 1:
-            try:
-                consensus = compute_consensus(valid_results)
-                results["consensus"] = consensus.to_dict() if hasattr(consensus, "to_dict") else consensus
-            except Exception as e:
-                logger.warning(f"Consensus computation failed: {e}")
+        # Calculate tail risk metrics
+        results['tail_risk'] = self._compute_tail_risk(df)
 
-        # Add stress-specific metrics
-        results["stress_metrics"] = self._compute_stress_metrics(df)
-        results["stress_score"] = self._compute_composite_stress_score(df)
-        results["alerts"] = self._generate_stress_alerts(df)
+        # Calculate regime indicators
+        results['regime_indicators'] = self._identify_regime_indicators(df)
 
-        self._results = results
+        # Calculate correlation breakdown
+        results['correlation_breakdown'] = self._analyze_correlation_breakdown(df)
+
+        # Top stress indicators
+        results['top_indicators'] = self._rank_stress_indicators(df)
+
+        self._last_results = results
         return results
 
-    def _basic_analysis(self, df: pd.DataFrame) -> Dict[str, Any]:
-        """Basic analysis when full lens framework is unavailable."""
-        value_cols = [c for c in df.columns if c != "date"]
-        panel = df[value_cols]
+    def _analyze_scenario(
+        self,
+        df: pd.DataFrame,
+        start: str,
+        end: str,
+        name: str
+    ) -> Dict[str, Any]:
+        """Analyze performance during a specific stress scenario."""
+        try:
+            scenario_df = df.loc[start:end]
+        except (KeyError, TypeError):
+            return {'error': f'Could not filter data for period {start} to {end}'}
 
-        # Compute basic statistics
-        stats = {
-            "mean": panel.mean().to_dict(),
-            "std": panel.std().to_dict(),
-            "current": panel.iloc[-1].to_dict() if len(panel) > 0 else {},
-            "percentile": {}
+        if len(scenario_df) == 0:
+            return {'error': 'No data available for this period'}
+
+        scenario_results = {
+            'name': name,
+            'period': {'start': start, 'end': end},
+            'n_observations': len(scenario_df),
+            'series_performance': {},
         }
 
-        # Compute percentiles
-        for col in panel.columns:
-            current = panel[col].iloc[-1]
-            if not pd.isna(current):
-                stats["percentile"][col] = float((panel[col] < current).mean() * 100)
+        for col in scenario_df.columns:
+            series = scenario_df[col].dropna()
+            if len(series) < 2:
+                continue
 
-        return {"basic_stats": stats}
+            # Calculate performance metrics
+            start_val = series.iloc[0]
+            end_val = series.iloc[-1]
+            min_val = series.min()
+            max_val = series.max()
 
-    def _compute_stress_metrics(self, df: pd.DataFrame) -> Dict[str, Any]:
-        """Compute stress-specific metrics for each category."""
-        value_cols = [c for c in df.columns if c != "date"]
-        panel = df[value_cols]
+            total_change = (end_val - start_val) / start_val if start_val != 0 else 0
+            max_drawdown = (min_val - max_val) / max_val if max_val != 0 else 0
 
-        metrics = {}
-
-        # Volatility stress
-        if "vix" in panel.columns:
-            vix = panel["vix"]
-            current_vix = vix.iloc[-1]
-            thresholds = self.THRESHOLDS["vix"]
-
-            if current_vix >= thresholds["extreme"]:
-                vix_level = "extreme"
-            elif current_vix >= thresholds["high"]:
-                vix_level = "high"
-            elif current_vix >= thresholds["medium"]:
-                vix_level = "medium"
-            else:
-                vix_level = "low"
-
-            metrics["volatility"] = {
-                "current_vix": float(current_vix) if not pd.isna(current_vix) else None,
-                "stress_level": vix_level,
-                "percentile": float((vix < current_vix).mean() * 100) if not pd.isna(current_vix) else None,
-                "20d_avg": float(vix.tail(20).mean()),
-                "change_1w": float(current_vix - vix.iloc[-5]) if len(vix) > 5 else None
+            scenario_results['series_performance'][col] = {
+                'total_change_pct': float(total_change * 100),
+                'max_drawdown_pct': float(max_drawdown * 100),
+                'start_value': float(start_val),
+                'end_value': float(end_val),
+                'min_value': float(min_val),
+                'max_value': float(max_val),
             }
 
-        # Yield curve stress
-        yield_curve_metrics = {}
-        for spread_name in ["t10y2y", "t10y3m"]:
-            if spread_name in panel.columns:
-                spread = panel[spread_name]
-                current = spread.iloc[-1]
-                is_inverted = current < 0 if not pd.isna(current) else None
-
-                yield_curve_metrics[spread_name] = {
-                    "current": float(current) if not pd.isna(current) else None,
-                    "inverted": is_inverted,
-                    "percentile": float((spread < current).mean() * 100) if not pd.isna(current) else None
-                }
-
-        if yield_curve_metrics:
-            # Overall yield curve assessment
-            inversions = [v["inverted"] for v in yield_curve_metrics.values() if v["inverted"] is not None]
-            yield_curve_metrics["overall"] = {
-                "any_inverted": any(inversions) if inversions else None,
-                "all_inverted": all(inversions) if inversions else None
-            }
-            metrics["yield_curve"] = yield_curve_metrics
-
-        # Financial conditions stress
-        fin_cond_metrics = {}
-        for indicator in ["nfci", "anfci"]:
-            if indicator in panel.columns:
-                series = panel[indicator]
-                current = series.iloc[-1]
-
-                if not pd.isna(current):
-                    if current > self.THRESHOLDS.get(indicator, {}).get("very_tight", 0.5):
-                        level = "very_tight"
-                    elif current > self.THRESHOLDS.get(indicator, {}).get("tight", 0):
-                        level = "tight"
-                    else:
-                        level = "loose"
-
-                    fin_cond_metrics[indicator] = {
-                        "current": float(current),
-                        "level": level,
-                        "percentile": float((series < current).mean() * 100),
-                        "trend_4w": float(current - series.iloc[-20]) if len(series) > 20 else None
-                    }
-
-        if fin_cond_metrics:
-            metrics["financial_conditions"] = fin_cond_metrics
-
-        # Credit stress (HYG/LQD spread as proxy)
-        if "hyg" in panel.columns and "lqd" in panel.columns:
-            hyg_ret = panel["hyg"].pct_change()
-            lqd_ret = panel["lqd"].pct_change()
-            credit_spread_proxy = lqd_ret - hyg_ret  # HY underperformance = stress
-
-            metrics["credit"] = {
-                "hyg_current": float(panel["hyg"].iloc[-1]) if not pd.isna(panel["hyg"].iloc[-1]) else None,
-                "lqd_current": float(panel["lqd"].iloc[-1]) if not pd.isna(panel["lqd"].iloc[-1]) else None,
-                "spread_proxy_20d": float(credit_spread_proxy.tail(20).sum()),
-                "hy_underperforming": credit_spread_proxy.tail(20).sum() > 0
+        # Summary statistics
+        changes = [v['total_change_pct'] for v in scenario_results['series_performance'].values()]
+        if changes:
+            scenario_results['summary'] = {
+                'avg_change_pct': float(np.mean(changes)),
+                'worst_performer': min(scenario_results['series_performance'].items(),
+                                      key=lambda x: x[1]['total_change_pct'])[0],
+                'best_performer': max(scenario_results['series_performance'].items(),
+                                     key=lambda x: x[1]['total_change_pct'])[0],
             }
 
-        return metrics
+        return scenario_results
 
-    def _compute_composite_stress_score(self, df: pd.DataFrame) -> Dict[str, Any]:
-        """
-        Compute a composite stress score (0-100).
+    def _compute_tail_risk(self, df: pd.DataFrame) -> Dict[str, Any]:
+        """Compute tail risk metrics across all series."""
+        returns = df.pct_change().dropna()
 
-        Higher scores indicate higher stress levels.
-        """
-        value_cols = [c for c in df.columns if c != "date"]
-        panel = df[value_cols]
+        tail_risk = {}
+        for col in returns.columns:
+            series = returns[col].dropna()
+            if len(series) < 100:
+                continue
 
-        scores = []
-        weights = []
+            # Calculate VaR at different confidence levels
+            var_99 = float(series.quantile(0.01))
+            var_95 = float(series.quantile(0.05))
 
-        # VIX component (weight: 30%)
-        if "vix" in panel.columns:
-            vix = panel["vix"]
-            current_vix = vix.iloc[-1]
-            if not pd.isna(current_vix):
-                vix_percentile = (vix < current_vix).mean() * 100
-                scores.append(vix_percentile)
-                weights.append(0.30)
+            # Expected Shortfall (CVaR)
+            cvar_99 = float(series[series <= var_99].mean()) if (series <= var_99).any() else var_99
+            cvar_95 = float(series[series <= var_95].mean()) if (series <= var_95).any() else var_95
 
-        # Yield curve component (weight: 25%)
-        yield_scores = []
-        for spread_name in ["t10y2y", "t10y3m"]:
-            if spread_name in panel.columns:
-                spread = panel[spread_name]
-                current = spread.iloc[-1]
-                if not pd.isna(current):
-                    # Inversion = high stress
-                    percentile = (spread > current).mean() * 100  # Lower spread = higher stress
-                    yield_scores.append(percentile)
+            # Tail ratio (ratio of extreme positive to negative returns)
+            extreme_neg = series[series <= series.quantile(0.05)]
+            extreme_pos = series[series >= series.quantile(0.95)]
+            tail_ratio = float(abs(extreme_pos.mean() / extreme_neg.mean())) if extreme_neg.mean() != 0 else 1
 
-        if yield_scores:
-            scores.append(np.mean(yield_scores))
-            weights.append(0.25)
+            tail_risk[col] = {
+                'var_95': var_95,
+                'var_99': var_99,
+                'cvar_95': cvar_95,
+                'cvar_99': cvar_99,
+                'tail_ratio': tail_ratio,
+                'kurtosis': float(series.kurtosis()),
+            }
 
-        # Financial conditions component (weight: 25%)
-        fc_scores = []
-        for indicator in ["nfci", "anfci"]:
-            if indicator in panel.columns:
-                series = panel[indicator]
-                current = series.iloc[-1]
-                if not pd.isna(current):
-                    percentile = (series < current).mean() * 100  # Higher = tighter = more stress
-                    fc_scores.append(percentile)
+        return tail_risk
 
-        if fc_scores:
-            scores.append(np.mean(fc_scores))
-            weights.append(0.25)
+    def _identify_regime_indicators(self, df: pd.DataFrame) -> Dict[str, Any]:
+        """Identify indicators that signal regime changes."""
+        returns = df.pct_change().dropna()
 
-        # Credit component (weight: 20%)
-        if "hyg" in panel.columns:
-            hyg = panel["hyg"]
-            hyg_ret_20d = hyg.iloc[-1] / hyg.iloc[-20] - 1 if len(hyg) > 20 else 0
-            # Negative HYG returns = stress
-            hyg_stress = max(0, -hyg_ret_20d * 1000)  # Scale and cap
-            scores.append(min(100, hyg_stress))
-            weights.append(0.20)
+        if len(returns) < 252:
+            return {'error': 'Insufficient data for regime analysis'}
 
-        if not scores:
-            return {"score": None, "level": "unknown", "components": {}}
+        regime_indicators = {}
 
-        # Normalize weights
-        total_weight = sum(weights)
-        weights = [w / total_weight for w in weights]
+        for col in returns.columns:
+            series = returns[col].dropna()
+            if len(series) < 252:
+                continue
 
-        # Compute weighted score
-        composite_score = sum(s * w for s, w in zip(scores, weights))
+            # Calculate rolling volatility
+            rolling_vol = series.rolling(window=21).std() * np.sqrt(252)
 
-        # Determine level
-        if composite_score >= 75:
-            level = "extreme"
-        elif composite_score >= 60:
-            level = "high"
-        elif composite_score >= 40:
-            level = "elevated"
-        elif composite_score >= 25:
-            level = "moderate"
-        else:
-            level = "low"
+            # Calculate volatility regime changes
+            vol_mean = rolling_vol.mean()
+            vol_std = rolling_vol.std()
 
-        return {
-            "score": float(composite_score),
-            "level": level,
-            "components": dict(zip(
-                ["volatility", "yield_curve", "financial_conditions", "credit"][:len(scores)],
-                scores
-            ))
-        }
+            # Count high volatility periods
+            high_vol_threshold = vol_mean + 2 * vol_std
+            high_vol_periods = (rolling_vol > high_vol_threshold).sum()
 
-    def _generate_stress_alerts(self, df: pd.DataFrame) -> List[Dict[str, Any]]:
-        """Generate alerts based on stress conditions."""
-        value_cols = [c for c in df.columns if c != "date"]
-        panel = df[value_cols]
+            # Volatility of volatility
+            vol_of_vol = rolling_vol.std() / rolling_vol.mean() if rolling_vol.mean() > 0 else 0
 
-        alerts = []
+            regime_indicators[col] = {
+                'avg_volatility': float(vol_mean),
+                'vol_of_vol': float(vol_of_vol),
+                'high_vol_periods': int(high_vol_periods),
+                'high_vol_pct': float(high_vol_periods / len(rolling_vol) * 100),
+                'current_vol_percentile': float((rolling_vol <= rolling_vol.iloc[-1]).mean() * 100) if len(rolling_vol) > 0 else 0,
+            }
 
-        # VIX alerts
-        if "vix" in panel.columns:
-            vix = panel["vix"]
-            current_vix = vix.iloc[-1]
-            if not pd.isna(current_vix):
-                if current_vix >= 40:
-                    alerts.append({
-                        "type": "extreme_volatility",
-                        "severity": "critical",
-                        "message": f"VIX at extreme level: {current_vix:.1f}",
-                        "indicator": "vix"
-                    })
-                elif current_vix >= 30:
-                    alerts.append({
-                        "type": "high_volatility",
-                        "severity": "warning",
-                        "message": f"VIX elevated: {current_vix:.1f}",
-                        "indicator": "vix"
-                    })
+        return regime_indicators
 
-                # VIX spike detection
-                if len(vix) > 5:
-                    vix_change = current_vix - vix.iloc[-5]
-                    if vix_change > 10:
-                        alerts.append({
-                            "type": "vix_spike",
-                            "severity": "warning",
-                            "message": f"VIX spiked {vix_change:.1f} points in 5 days",
-                            "indicator": "vix"
+    def _analyze_correlation_breakdown(self, df: pd.DataFrame) -> Dict[str, Any]:
+        """Analyze how correlations change during stress periods."""
+        returns = df.pct_change().dropna()
+
+        if len(returns) < 252:
+            return {'error': 'Insufficient data for correlation analysis'}
+
+        # Calculate normal period correlations (middle 80% of returns)
+        normal_mask = (returns > returns.quantile(0.1)).all(axis=1) & \
+                      (returns < returns.quantile(0.9)).all(axis=1)
+        normal_corr = returns[normal_mask].corr() if normal_mask.sum() > 30 else returns.corr()
+
+        # Calculate stress period correlations (bottom 10% of any series)
+        stress_mask = (returns < returns.quantile(0.1)).any(axis=1)
+        stress_corr = returns[stress_mask].corr() if stress_mask.sum() > 30 else returns.corr()
+
+        # Calculate correlation changes
+        corr_change = stress_corr - normal_corr
+
+        # Find biggest correlation increases during stress
+        biggest_increases = []
+        for i, col1 in enumerate(corr_change.columns):
+            for j, col2 in enumerate(corr_change.columns):
+                if i < j:
+                    change = corr_change.loc[col1, col2]
+                    if not pd.isna(change):
+                        biggest_increases.append({
+                            'pair': f"{col1} / {col2}",
+                            'normal_corr': float(normal_corr.loc[col1, col2]),
+                            'stress_corr': float(stress_corr.loc[col1, col2]),
+                            'change': float(change),
                         })
 
-        # Yield curve alerts
-        for spread_name in ["t10y2y", "t10y3m"]:
-            if spread_name in panel.columns:
-                spread = panel[spread_name]
-                current = spread.iloc[-1]
-                if not pd.isna(current) and current < 0:
-                    alerts.append({
-                        "type": "yield_curve_inversion",
-                        "severity": "warning",
-                        "message": f"{spread_name.upper()} inverted: {current:.2f}%",
-                        "indicator": spread_name
-                    })
+        biggest_increases.sort(key=lambda x: x['change'], reverse=True)
 
-        # Financial conditions alerts
-        for indicator in ["nfci", "anfci"]:
-            if indicator in panel.columns:
-                series = panel[indicator]
-                current = series.iloc[-1]
-                if not pd.isna(current) and current > 0.5:
-                    alerts.append({
-                        "type": "tight_financial_conditions",
-                        "severity": "warning",
-                        "message": f"{indicator.upper()} indicates tight conditions: {current:.2f}",
-                        "indicator": indicator
-                    })
-
-        return alerts
-
-    def get_stress_score(self) -> Tuple[float, str]:
-        """
-        Get the current composite stress score.
-
-        Returns:
-            Tuple of (score, level)
-        """
-        if self._results is None:
-            self.analyze()
-
-        if self._results and "stress_score" in self._results:
-            score_data = self._results["stress_score"]
-            return (score_data.get("score"), score_data.get("level"))
-
-        return (None, "unknown")
-
-    def get_panel_info(self) -> Dict[str, Any]:
-        """Get information about the loaded panel."""
-        registry = get_registry("system")
-
-        info = {
-            "panel_name": self.panel_name,
-            "panel_path": str(get_panel_path(self.panel_name)),
-            "indicators": self.indicators,
-            "engine_type": self.name,
-            "stress_categories": self.STRESS_CATEGORIES
+        return {
+            'avg_normal_correlation': float(normal_corr.values[np.triu_indices_from(normal_corr.values, 1)].mean()),
+            'avg_stress_correlation': float(stress_corr.values[np.triu_indices_from(stress_corr.values, 1)].mean()),
+            'correlation_increase_pairs': biggest_increases[:10],
         }
 
-        if self._panel is not None:
-            info["loaded"] = True
-            info["shape"] = self._panel.shape
-            info["date_range"] = [
-                str(self._panel["date"].min()) if "date" in self._panel.columns else "N/A",
-                str(self._panel["date"].max()) if "date" in self._panel.columns else "N/A"
-            ]
-        else:
-            info["loaded"] = False
+    def _rank_stress_indicators(self, df: pd.DataFrame) -> List[Dict[str, Any]]:
+        """Rank indicators by their stress sensitivity."""
+        returns = df.pct_change().dropna()
 
-        return info
+        rankings = []
+
+        for col in returns.columns:
+            series = returns[col].dropna()
+            if len(series) < 100:
+                continue
+
+            # Calculate stress sensitivity score
+            var_95 = abs(series.quantile(0.05))
+            kurtosis = abs(series.kurtosis())
+            skewness = abs(series.skew())
+
+            # Combine into stress score (higher = more sensitive to stress)
+            stress_score = var_95 * 10 + kurtosis * 0.1 + skewness * 0.5
+
+            rankings.append({
+                'indicator': col,
+                'score': float(stress_score),
+                'var_95': float(var_95),
+                'kurtosis': float(kurtosis),
+                'skewness': float(skewness),
+            })
+
+        rankings.sort(key=lambda x: x['score'], reverse=True)
+
+        for i, r in enumerate(rankings):
+            r['rank'] = i + 1
+
+        return rankings[:10]
+
+    def run_custom_stress_test(
+        self,
+        shocks: Dict[str, float],
+        propagation_matrix: Optional[pd.DataFrame] = None
+    ) -> Dict[str, Any]:
+        """
+        Run a custom stress test with specified shocks.
+
+        Args:
+            shocks: Dictionary of {indicator: shock_magnitude}
+            propagation_matrix: Optional correlation/propagation matrix
+
+        Returns:
+            Stress test results
+        """
+        df = self.panel.copy()
+
+        if propagation_matrix is None:
+            # Use historical correlation as propagation mechanism
+            returns = df.pct_change().dropna()
+            propagation_matrix = returns.corr()
+
+        results = {
+            'direct_shocks': shocks,
+            'propagated_shocks': {},
+            'total_impact': {},
+        }
+
+        # Calculate propagated shocks
+        for indicator, shock in shocks.items():
+            if indicator in propagation_matrix.columns:
+                for other in propagation_matrix.columns:
+                    if other != indicator:
+                        corr = propagation_matrix.loc[indicator, other]
+                        propagated = shock * corr
+                        if other not in results['propagated_shocks']:
+                            results['propagated_shocks'][other] = 0
+                        results['propagated_shocks'][other] += propagated
+
+        # Calculate total impact
+        for indicator in df.columns:
+            direct = shocks.get(indicator, 0)
+            propagated = results['propagated_shocks'].get(indicator, 0)
+            results['total_impact'][indicator] = {
+                'direct': float(direct),
+                'propagated': float(propagated),
+                'total': float(direct + propagated),
+            }
+
+        return results
 
     def __repr__(self) -> str:
-        return f"PrismStressEngine(panel='{self.panel_name}', indicators={len(self.indicators)})"
+        return f"PrismStressEngine(series={len(self.panel.columns) if self._panel is not None else 'not loaded'})"

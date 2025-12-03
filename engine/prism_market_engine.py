@@ -1,16 +1,16 @@
 """
-PRISM Market Engine - Market Indicator Analysis
+PRISM Market Engine - Market Data Analysis
 
-Analyzes market-based indicators (equities, commodities, fixed income, volatility)
-using registry-driven panel loading and the PRISM lens framework.
-
-This engine focuses on market dynamics, cross-asset relationships, and price-based signals.
+This engine focuses on analyzing market data from Yahoo Finance and other
+market data sources. It uses registry-driven configuration to load panel data
+and interpret columns.
 
 Usage:
-    from engine.prism_market_engine import PrismMarketEngine
+    from engine import PrismMarketEngine
 
     engine = PrismMarketEngine()
     results = engine.analyze()
+    print(results['top_indicators'])
 """
 
 import logging
@@ -18,326 +18,351 @@ from typing import Dict, Any, Optional, List
 from pathlib import Path
 import pandas as pd
 import numpy as np
+from datetime import datetime
 
-# Add parent directory to path for imports
 import sys
-_ENGINE_DIR = Path(__file__).parent.resolve()
-_PROJECT_ROOT = _ENGINE_DIR.parent
-if str(_PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(_PROJECT_ROOT))
+_pkg_root = Path(__file__).parent.parent
+if str(_pkg_root) not in sys.path:
+    sys.path.insert(0, str(_pkg_root))
 
-from utils.panel_loader import (
-    load_panel,
-    get_registry,
-    get_engine_indicators,
-    get_panel_path,
-    PanelLoadError,
-    RegistryError
-)
+from utils.registry import RegistryManager, load_panel, get_market_series, get_engine_config
 
 logger = logging.getLogger(__name__)
 
 
 class PrismMarketEngine:
     """
-    PRISM Engine for Market Analysis.
+    Engine for analyzing market data.
 
-    Analyzes market indicators to identify:
-    - Cross-asset correlations
-    - Risk-on/risk-off regimes
-    - Market momentum and reversals
-    - Sector leadership
+    This engine:
+    - Loads panel data from registry-specified paths
+    - Focuses on market series (Yahoo Finance data)
+    - Provides market-specific analysis methods (returns, volatility, risk)
     """
 
-    # Engine metadata
     name = "market"
-    description = "Market indicator analysis engine"
-    version = "1.0.0"
+    description = "Market data analysis engine"
 
-    # Asset class groupings
-    ASSET_GROUPS = {
-        "equity": ["spy", "qqq", "iwm"],
-        "volatility": ["vix"],
-        "currency": ["dxy"],
-        "commodities": ["gld", "slv", "uso", "bcom"],
-        "fixed_income": ["bnd", "tlt", "shy", "ief", "tip"],
-        "credit": ["lqd", "hyg"],
-        "sectors": ["xlu"]
+    # Market asset categories
+    CATEGORIES = {
+        'equity': ['spy_spy', 'qqq_qqq', 'iwm_iwm'],
+        'commodity': ['gld_gld', 'slv_slv', 'uso_uso'],
+        'fixed_income': ['bnd_bnd', 'tlt_tlt', 'shy_shy', 'ief_ief', 'tip_tip'],
+        'credit': ['lqd_lqd', 'hyg_hyg'],
+        'defensive': ['xlu_xlu'],
     }
+
+    # Risk-free rate proxy
+    RISK_FREE_PROXY = 'shy_shy'
 
     def __init__(
         self,
-        panel_name: str = "default",
-        custom_indicators: Optional[List[str]] = None,
+        project_root: Optional[Path] = None,
         config: Optional[Dict] = None
     ):
         """
-        Initialize the Market Engine.
+        Initialize the market engine.
 
         Args:
-            panel_name: Panel to load from registry ("default", "climate", etc.)
-            custom_indicators: Override default market indicators
-            config: Additional configuration options
+            project_root: Optional project root path
+            config: Optional configuration overrides
         """
-        self.panel_name = panel_name
+        self.registry = RegistryManager(project_root)
         self.config = config or {}
+
+        # Get default config from registry
+        self._default_config = self.registry.get_engine_config() or {}
         self._panel: Optional[pd.DataFrame] = None
-        self._results: Optional[Dict] = None
+        self._last_results: Optional[Dict] = None
 
-        # Get indicators from registry or use custom
-        if custom_indicators is not None:
-            self.indicators = custom_indicators
-        else:
-            self.indicators = get_engine_indicators("market")
+    @property
+    def panel(self) -> pd.DataFrame:
+        """Lazy-load the panel data."""
+        if self._panel is None:
+            self._panel = self._load_panel()
+        return self._panel
 
-        logger.info(f"PrismMarketEngine initialized with {len(self.indicators)} indicators")
-
-    def load_data(
-        self,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
-        reload: bool = False
-    ) -> pd.DataFrame:
+    def _load_panel(self) -> pd.DataFrame:
         """
-        Load panel data using registry configuration.
-
-        Args:
-            start_date: Optional start date filter (YYYY-MM-DD)
-            end_date: Optional end date filter (YYYY-MM-DD)
-            reload: Force reload even if already loaded
+        Load and filter panel data for market series only.
 
         Returns:
-            DataFrame with market indicators
+            DataFrame with market series
         """
-        if self._panel is not None and not reload:
-            return self._panel
+        # Load from registry-specified path
+        full_panel = self.registry.load_panel(panel_type='master')
 
-        try:
-            self._panel = load_panel(
-                panel_name=self.panel_name,
-                columns=self.indicators,
-                start_date=start_date,
-                end_date=end_date,
-                fill_na=True
-            )
-            logger.info(f"Loaded market panel: {self._panel.shape}")
-            return self._panel
+        # Get market series columns from registry
+        market_cols = self.registry.get_market_series()
 
-        except (PanelLoadError, RegistryError) as e:
-            logger.error(f"Failed to load market panel: {e}")
-            raise
+        # Filter to available columns
+        available_cols = [c for c in market_cols if c in full_panel.columns]
+
+        if not available_cols:
+            logger.warning("No market columns found in panel. Using all columns.")
+            return full_panel
+
+        logger.info(f"Loaded {len(available_cols)} market series from panel")
+        return full_panel[available_cols]
+
+    def reload_panel(self) -> pd.DataFrame:
+        """Force reload of panel data."""
+        self._panel = None
+        return self.panel
 
     def analyze(
         self,
-        df: Optional[pd.DataFrame] = None,
-        lenses: Optional[List[str]] = None,
+        lookback_years: Optional[int] = None,
+        tickers: Optional[List[str]] = None,
         **kwargs
     ) -> Dict[str, Any]:
         """
-        Run market analysis using PRISM lenses.
+        Run market analysis.
 
         Args:
-            df: Optional DataFrame (loads from registry if None)
-            lenses: List of lenses to run (uses defaults if None)
-            **kwargs: Additional parameters for lenses
+            lookback_years: Number of years to analyze (default from config)
+            tickers: List of tickers to analyze (default: all available)
+            **kwargs: Additional analysis parameters
 
         Returns:
             Dictionary with analysis results
         """
-        # Load data if not provided
-        if df is None:
-            df = self.load_data()
+        lookback = lookback_years or self._default_config.get('default_lookback_years', 5)
 
-        if df is None or df.empty:
-            return {"error": "No data available for analysis"}
+        # Get data
+        df = self.panel.copy()
 
-        # Default lenses for market analysis
-        if lenses is None:
-            lenses = ["magnitude", "pca", "clustering", "influence", "network"]
+        # Filter by lookback period
+        if lookback and hasattr(df.index, 'year'):
+            cutoff = datetime.now().year - lookback
+            df = df[df.index.year >= cutoff]
 
-        # Import analysis components
-        try:
-            from loader import run_lens, compute_consensus
-        except ImportError:
-            logger.warning("Loader not available, using basic analysis")
-            return self._basic_analysis(df)
+        # Filter to specific tickers if provided
+        if tickers:
+            available = [t for t in tickers if t in df.columns]
+            df = df[available]
 
-        # Run lenses
-        results = {}
-        for lens_name in lenses:
-            try:
-                value_cols = [c for c in df.columns if c != "date"]
-                panel_data = df[value_cols]
-                results[lens_name] = run_lens(lens_name, panel_data)
-                logger.info(f"Completed {lens_name} lens")
-            except Exception as e:
-                logger.warning(f"Lens {lens_name} failed: {e}")
-                results[lens_name] = {"error": str(e)}
+        # Drop rows with too many NaNs
+        nan_threshold = self._default_config.get('nan_threshold', 0.5)
+        df = df.dropna(thresh=int(len(df.columns) * (1 - nan_threshold)))
 
-        # Compute consensus if multiple lenses succeeded
-        valid_results = {k: v for k, v in results.items() if "error" not in v}
-        if len(valid_results) > 1:
-            try:
-                consensus = compute_consensus(valid_results)
-                results["consensus"] = consensus.to_dict() if hasattr(consensus, "to_dict") else consensus
-            except Exception as e:
-                logger.warning(f"Consensus computation failed: {e}")
+        # Calculate returns
+        returns = df.pct_change().dropna()
 
-        # Add market-specific metrics
-        results["market_metrics"] = self._compute_market_metrics(df)
-        results["cross_asset"] = self._compute_cross_asset_metrics(df)
+        # Run analysis
+        results = {
+            'timestamp': datetime.now().isoformat(),
+            'engine': self.name,
+            'n_assets': len(df.columns),
+            'n_observations': len(df),
+            'date_range': {
+                'start': str(df.index.min()) if len(df) > 0 else None,
+                'end': str(df.index.max()) if len(df) > 0 else None,
+            },
+            'assets_analyzed': list(df.columns),
+        }
 
-        self._results = results
+        # Calculate return statistics
+        results['return_statistics'] = self._compute_return_stats(returns)
+
+        # Calculate risk metrics
+        results['risk_metrics'] = self._compute_risk_metrics(returns)
+
+        # Calculate correlations
+        results['correlations'] = self._compute_correlations(returns)
+
+        # Rank assets
+        results['top_indicators'] = self._rank_assets(returns)
+
+        # Category analysis
+        results['category_analysis'] = self._analyze_categories(returns)
+
+        self._last_results = results
         return results
 
-    def _basic_analysis(self, df: pd.DataFrame) -> Dict[str, Any]:
-        """Basic analysis when full lens framework is unavailable."""
-        value_cols = [c for c in df.columns if c != "date"]
-        panel = df[value_cols]
+    def _compute_return_stats(self, returns: pd.DataFrame) -> Dict[str, Any]:
+        """Compute return statistics."""
+        stats = {}
 
-        # Compute basic statistics
-        stats = {
-            "mean": panel.mean().to_dict(),
-            "std": panel.std().to_dict(),
-            "correlation": panel.corr().to_dict(),
+        for col in returns.columns:
+            series = returns[col].dropna()
+            if len(series) == 0:
+                continue
+
+            annualized_return = series.mean() * 252
+            annualized_vol = series.std() * np.sqrt(252)
+
+            stats[col] = {
+                'annualized_return': float(annualized_return),
+                'annualized_volatility': float(annualized_vol),
+                'sharpe_ratio': float(annualized_return / annualized_vol) if annualized_vol > 0 else 0,
+                'max_daily_gain': float(series.max()),
+                'max_daily_loss': float(series.min()),
+                'positive_days_pct': float((series > 0).mean() * 100),
+            }
+
+        return stats
+
+    def _compute_risk_metrics(self, returns: pd.DataFrame) -> Dict[str, Any]:
+        """Compute risk metrics."""
+        risk = {}
+
+        for col in returns.columns:
+            series = returns[col].dropna()
+            if len(series) == 0:
+                continue
+
+            # VaR and CVaR (Expected Shortfall)
+            var_95 = float(series.quantile(0.05))
+            cvar_95 = float(series[series <= var_95].mean()) if (series <= var_95).any() else var_95
+
+            # Maximum drawdown
+            cumulative = (1 + series).cumprod()
+            running_max = cumulative.cummax()
+            drawdown = (cumulative - running_max) / running_max
+            max_drawdown = float(drawdown.min())
+
+            # Skewness and Kurtosis
+            skew = float(series.skew())
+            kurt = float(series.kurtosis())
+
+            risk[col] = {
+                'var_95': var_95,
+                'cvar_95': cvar_95,
+                'max_drawdown': max_drawdown,
+                'skewness': skew,
+                'kurtosis': kurt,
+                'downside_volatility': float(series[series < 0].std() * np.sqrt(252)) if (series < 0).any() else 0,
+            }
+
+        return risk
+
+    def _compute_correlations(self, returns: pd.DataFrame) -> Dict[str, Any]:
+        """Compute correlation analysis."""
+        corr_matrix = returns.corr()
+
+        # Find diversification opportunities (low correlations)
+        low_corr = []
+        for i, col1 in enumerate(corr_matrix.columns):
+            for j, col2 in enumerate(corr_matrix.columns):
+                if i < j:
+                    corr_val = corr_matrix.loc[col1, col2]
+                    if abs(corr_val) < 0.3:
+                        low_corr.append({
+                            'asset1': col1,
+                            'asset2': col2,
+                            'correlation': float(corr_val)
+                        })
+
+        return {
+            'low_correlations': sorted(low_corr, key=lambda x: abs(x['correlation']))[:10],
+            'avg_correlation': float(corr_matrix.values[np.triu_indices_from(corr_matrix.values, 1)].mean()),
+            'max_correlation': float(corr_matrix.values[np.triu_indices_from(corr_matrix.values, 1)].max()),
         }
 
-        # L2 norm importance
-        normalized = (panel - panel.mean()) / panel.std()
-        magnitude = np.sqrt((normalized ** 2).sum())
-        stats["magnitude_importance"] = magnitude.to_dict()
+    def _rank_assets(self, returns: pd.DataFrame) -> List[Dict[str, Any]]:
+        """Rank assets by risk-adjusted returns."""
+        rankings = []
 
-        return {"basic_stats": stats}
+        for col in returns.columns:
+            series = returns[col].dropna()
+            if len(series) < 20:
+                continue
 
-    def _compute_market_metrics(self, df: pd.DataFrame) -> Dict[str, Any]:
-        """Compute market-specific metrics."""
-        value_cols = [c for c in df.columns if c != "date"]
-        panel = df[value_cols]
+            annualized_return = series.mean() * 252
+            annualized_vol = series.std() * np.sqrt(252)
+            sharpe = annualized_return / annualized_vol if annualized_vol > 0 else 0
 
-        metrics = {}
+            # Sortino ratio (downside risk adjusted)
+            downside_returns = series[series < 0]
+            downside_vol = downside_returns.std() * np.sqrt(252) if len(downside_returns) > 0 else annualized_vol
+            sortino = annualized_return / downside_vol if downside_vol > 0 else 0
 
-        # Returns analysis for equity indicators
-        equity_cols = [c for c in self.ASSET_GROUPS.get("equity", []) if c in panel.columns]
-        for col in equity_cols:
-            if len(panel[col].dropna()) > 20:
-                returns = panel[col].pct_change()
-                metrics[f"{col}_performance"] = {
-                    "return_1m": float(panel[col].iloc[-1] / panel[col].iloc[-21] - 1) if len(panel) > 21 else None,
-                    "return_3m": float(panel[col].iloc[-1] / panel[col].iloc[-63] - 1) if len(panel) > 63 else None,
-                    "return_ytd": float(panel[col].iloc[-1] / panel[col].iloc[0] - 1) if len(panel) > 1 else None,
-                    "volatility_20d": float(returns.tail(20).std() * np.sqrt(252)),
-                    "sharpe_20d": float(returns.tail(20).mean() / returns.tail(20).std() * np.sqrt(252)) if returns.tail(20).std() > 0 else None
-                }
+            rankings.append({
+                'indicator': col,
+                'score': float(sharpe),  # Use Sharpe as primary score
+                'sharpe_ratio': float(sharpe),
+                'sortino_ratio': float(sortino),
+                'annualized_return': float(annualized_return),
+                'annualized_volatility': float(annualized_vol),
+            })
 
-        # VIX metrics
-        if "vix" in panel.columns:
-            vix = panel["vix"]
-            metrics["volatility_regime"] = {
-                "current_vix": float(vix.iloc[-1]) if not pd.isna(vix.iloc[-1]) else None,
-                "vix_percentile": float((vix < vix.iloc[-1]).mean() * 100) if not pd.isna(vix.iloc[-1]) else None,
-                "vix_20d_avg": float(vix.tail(20).mean()),
-                "regime": "high" if vix.iloc[-1] > 25 else ("elevated" if vix.iloc[-1] > 18 else "low")
+        # Sort by Sharpe ratio
+        rankings.sort(key=lambda x: x['score'], reverse=True)
+
+        # Add rank
+        for i, r in enumerate(rankings):
+            r['rank'] = i + 1
+
+        return rankings[:10]
+
+    def _analyze_categories(self, returns: pd.DataFrame) -> Dict[str, Any]:
+        """Analyze assets by category."""
+        category_analysis = {}
+
+        for category, assets in self.CATEGORIES.items():
+            available = [a for a in assets if a in returns.columns]
+            if not available:
+                continue
+
+            cat_returns = returns[available].dropna()
+            if len(cat_returns) == 0:
+                continue
+
+            # Calculate category-level metrics
+            avg_return = cat_returns.mean().mean() * 252
+            avg_vol = cat_returns.std().mean() * np.sqrt(252)
+
+            category_analysis[category] = {
+                'assets': available,
+                'n_assets': len(available),
+                'avg_annualized_return': float(avg_return),
+                'avg_annualized_volatility': float(avg_vol),
+                'avg_sharpe': float(avg_return / avg_vol) if avg_vol > 0 else 0,
+                'intra_category_correlation': float(cat_returns.corr().values.mean()),
             }
 
-        # Dollar strength
-        if "dxy" in panel.columns:
-            dxy = panel["dxy"]
-            metrics["dollar"] = {
-                "current": float(dxy.iloc[-1]) if not pd.isna(dxy.iloc[-1]) else None,
-                "change_1m": float(dxy.iloc[-1] / dxy.iloc[-21] - 1) if len(dxy) > 21 else None,
-                "percentile": float((dxy < dxy.iloc[-1]).mean() * 100) if not pd.isna(dxy.iloc[-1]) else None
-            }
+        return category_analysis
 
-        return metrics
-
-    def _compute_cross_asset_metrics(self, df: pd.DataFrame) -> Dict[str, Any]:
-        """Compute cross-asset correlation and relationship metrics."""
-        value_cols = [c for c in df.columns if c != "date"]
-        panel = df[value_cols]
-
-        metrics = {}
-
-        # Rolling correlation between SPY and key assets
-        if "spy" in panel.columns:
-            spy_returns = panel["spy"].pct_change()
-
-            for col in panel.columns:
-                if col != "spy" and len(panel[col].dropna()) > 60:
-                    col_returns = panel[col].pct_change()
-                    # 60-day rolling correlation
-                    rolling_corr = spy_returns.rolling(60).corr(col_returns)
-                    metrics[f"spy_{col}_corr"] = {
-                        "current": float(rolling_corr.iloc[-1]) if not pd.isna(rolling_corr.iloc[-1]) else None,
-                        "mean": float(rolling_corr.mean()),
-                        "regime": "positive" if rolling_corr.iloc[-1] > 0.3 else ("negative" if rolling_corr.iloc[-1] < -0.3 else "neutral")
-                    }
-
-        # Risk-on/Risk-off indicator
-        risk_on_assets = [c for c in ["spy", "qqq", "hyg"] if c in panel.columns]
-        risk_off_assets = [c for c in ["tlt", "gld", "vix"] if c in panel.columns]
-
-        if risk_on_assets and risk_off_assets:
-            risk_on_returns = panel[risk_on_assets].pct_change().mean(axis=1)
-            risk_off_returns = panel[risk_off_assets].pct_change().mean(axis=1)
-            risk_sentiment = risk_on_returns.rolling(20).mean() - risk_off_returns.rolling(20).mean()
-
-            metrics["risk_sentiment"] = {
-                "current": float(risk_sentiment.iloc[-1]) if not pd.isna(risk_sentiment.iloc[-1]) else None,
-                "regime": "risk_on" if risk_sentiment.iloc[-1] > 0.001 else ("risk_off" if risk_sentiment.iloc[-1] < -0.001 else "neutral")
-            }
-
-        return metrics
-
-    def get_asset_group_performance(self, lookback_days: int = 20) -> Dict[str, float]:
+    def get_asset_details(self, ticker: str) -> Dict[str, Any]:
         """
-        Get performance by asset group.
+        Get detailed analysis for a specific asset.
 
         Args:
-            lookback_days: Number of days for return calculation
+            ticker: Asset ticker
 
         Returns:
-            Dictionary mapping asset group to return
+            Dictionary with asset details
         """
-        if self._panel is None:
-            self.load_data()
+        if ticker not in self.panel.columns:
+            return {'error': f'Asset {ticker} not found in panel'}
 
-        if self._panel is None:
-            return {}
+        prices = self.panel[ticker].dropna()
+        if len(prices) == 0:
+            return {'error': f'No data for asset {ticker}'}
 
-        performance = {}
-        for group_name, tickers in self.ASSET_GROUPS.items():
-            available = [t for t in tickers if t in self._panel.columns]
-            if available:
-                group_data = self._panel[available]
-                if len(group_data) > lookback_days:
-                    group_return = (group_data.iloc[-1] / group_data.iloc[-lookback_days] - 1).mean()
-                    performance[group_name] = float(group_return)
+        returns = prices.pct_change().dropna()
 
-        return performance
-
-    def get_panel_info(self) -> Dict[str, Any]:
-        """Get information about the loaded panel."""
-        registry = get_registry("system")
-
-        info = {
-            "panel_name": self.panel_name,
-            "panel_path": str(get_panel_path(self.panel_name)),
-            "indicators": self.indicators,
-            "engine_type": self.name,
-            "asset_groups": self.ASSET_GROUPS
+        return {
+            'ticker': ticker,
+            'n_observations': len(prices),
+            'date_range': {
+                'start': str(prices.index.min()),
+                'end': str(prices.index.max()),
+            },
+            'current_price': float(prices.iloc[-1]),
+            'price_statistics': {
+                'high': float(prices.max()),
+                'low': float(prices.min()),
+                'mean': float(prices.mean()),
+            },
+            'return_statistics': {
+                'annualized_return': float(returns.mean() * 252),
+                'annualized_volatility': float(returns.std() * np.sqrt(252)),
+                'sharpe_ratio': float(returns.mean() / returns.std() * np.sqrt(252)) if returns.std() > 0 else 0,
+            },
+            'ytd_return': float((prices.iloc[-1] / prices.iloc[0] - 1) * 100),
         }
 
-        if self._panel is not None:
-            info["loaded"] = True
-            info["shape"] = self._panel.shape
-            info["date_range"] = [
-                str(self._panel["date"].min()) if "date" in self._panel.columns else "N/A",
-                str(self._panel["date"].max()) if "date" in self._panel.columns else "N/A"
-            ]
-        else:
-            info["loaded"] = False
-
-        return info
-
     def __repr__(self) -> str:
-        return f"PrismMarketEngine(panel='{self.panel_name}', indicators={len(self.indicators)})"
+        return f"PrismMarketEngine(assets={len(self.panel.columns) if self._panel is not None else 'not loaded'})"

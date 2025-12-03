@@ -11,11 +11,14 @@ Usage:
     results = engine.analyze(panel_data, mode="basic")
     print(results["top_indicators"])
 
-    # Registry-driven engines
-    from engine import PrismMacroEngine, PrismMarketEngine, PrismStressEngine, PrismMLEngine
+    # Domain-specific engines (registry-driven)
+    from engine import PrismMacroEngine, PrismMarketEngine
 
     macro = PrismMacroEngine()
-    results = macro.analyze()
+    macro_results = macro.analyze()
+
+    market = PrismMarketEngine()
+    market_results = market.analyze()
 """
 
 __version__ = "0.1.0"
@@ -71,7 +74,7 @@ def __getattr__(name):
         engine = import_module("05_engine")
         return engine.get_lens
 
-    # Registry-driven PRISM engines
+    # Domain-specific engines (registry-driven)
     elif name == "PrismMacroEngine":
         from .prism_macro_engine import PrismMacroEngine
         return PrismMacroEngine
@@ -100,7 +103,7 @@ __all__ = [
     'IndicatorEngine',
     'LensComparator',
     'get_lens',
-    # Registry-driven engines
+    # Domain-specific engines
     'PrismMacroEngine',
     'PrismMarketEngine',
     'PrismStressEngine',

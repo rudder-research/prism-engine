@@ -1,17 +1,15 @@
 """
-PRISM ML Engine - Machine Learning Analysis
+PRISM ML Engine - Machine Learning Based Analysis
 
-Provides machine learning capabilities for indicator analysis using
-registry-driven panel loading and the PRISM lens framework.
-
-This engine focuses on pattern recognition, anomaly detection, and predictive analysis.
+This engine focuses on machine learning approaches for indicator analysis.
+It uses registry-driven configuration to load panel data and interpret columns.
 
 Usage:
-    from engine.prism_ml_engine import PrismMLEngine
+    from engine import PrismMLEngine
 
     engine = PrismMLEngine()
     results = engine.analyze()
-    anomalies = engine.detect_anomalies()
+    print(results['feature_importance'])
 """
 
 import logging
@@ -19,485 +17,484 @@ from typing import Dict, Any, Optional, List, Tuple
 from pathlib import Path
 import pandas as pd
 import numpy as np
+from datetime import datetime
 
-# Add parent directory to path for imports
 import sys
-_ENGINE_DIR = Path(__file__).parent.resolve()
-_PROJECT_ROOT = _ENGINE_DIR.parent
-if str(_PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(_PROJECT_ROOT))
+_pkg_root = Path(__file__).parent.parent
+if str(_pkg_root) not in sys.path:
+    sys.path.insert(0, str(_pkg_root))
 
-from utils.panel_loader import (
-    load_panel,
-    get_registry,
-    get_engine_indicators,
-    get_panel_path,
-    PanelLoadError,
-    RegistryError
-)
+from utils.registry import RegistryManager, load_panel, get_engine_config
 
 logger = logging.getLogger(__name__)
 
 
 class PrismMLEngine:
     """
-    PRISM Engine for Machine Learning Analysis.
+    Engine for machine learning based analysis.
 
-    Provides ML-based analysis including:
-    - Anomaly detection
-    - Pattern recognition
-    - Regime classification
-    - Feature importance ranking
-    - Dimensionality reduction
+    This engine:
+    - Loads panel data from registry-specified paths
+    - Provides ML-based feature importance and clustering
+    - Implements dimensionality reduction and pattern recognition
     """
 
-    # Engine metadata
     name = "ml"
     description = "Machine learning analysis engine"
-    version = "1.0.0"
 
     def __init__(
         self,
-        panel_name: str = "default",
-        custom_indicators: Optional[List[str]] = None,
+        project_root: Optional[Path] = None,
         config: Optional[Dict] = None
     ):
         """
-        Initialize the ML Engine.
+        Initialize the ML engine.
 
         Args:
-            panel_name: Panel to load from registry ("default", "climate", etc.)
-            custom_indicators: Override default indicators (uses all by default)
-            config: Additional configuration options
+            project_root: Optional project root path
+            config: Optional configuration overrides
         """
-        self.panel_name = panel_name
+        self.registry = RegistryManager(project_root)
         self.config = config or {}
+
+        # Get default config from registry
+        self._default_config = self.registry.get_engine_config() or {}
         self._panel: Optional[pd.DataFrame] = None
-        self._results: Optional[Dict] = None
+        self._last_results: Optional[Dict] = None
 
-        # ML engine uses all available indicators by default
-        if custom_indicators is not None:
-            self.indicators = custom_indicators
-        else:
-            # Combine all indicator types
-            self.indicators = None  # Will load all columns
+    @property
+    def panel(self) -> pd.DataFrame:
+        """Lazy-load the panel data."""
+        if self._panel is None:
+            self._panel = self._load_panel()
+        return self._panel
 
-        logger.info("PrismMLEngine initialized")
-
-    def load_data(
-        self,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
-        reload: bool = False
-    ) -> pd.DataFrame:
+    def _load_panel(self) -> pd.DataFrame:
         """
-        Load panel data using registry configuration.
-
-        Args:
-            start_date: Optional start date filter (YYYY-MM-DD)
-            end_date: Optional end date filter (YYYY-MM-DD)
-            reload: Force reload even if already loaded
+        Load full panel data.
 
         Returns:
-            DataFrame with indicators
+            Full DataFrame with all available series
         """
-        if self._panel is not None and not reload:
-            return self._panel
+        # Load from registry-specified path
+        full_panel = self.registry.load_panel(panel_type='master')
 
-        try:
-            self._panel = load_panel(
-                panel_name=self.panel_name,
-                columns=self.indicators,
-                start_date=start_date,
-                end_date=end_date,
-                fill_na=True
-            )
-            logger.info(f"Loaded ML panel: {self._panel.shape}")
-            return self._panel
+        logger.info(f"Loaded {len(full_panel.columns)} series from panel for ML analysis")
+        return full_panel
 
-        except (PanelLoadError, RegistryError) as e:
-            logger.error(f"Failed to load ML panel: {e}")
-            raise
+    def reload_panel(self) -> pd.DataFrame:
+        """Force reload of panel data."""
+        self._panel = None
+        return self.panel
 
     def analyze(
         self,
-        df: Optional[pd.DataFrame] = None,
-        lenses: Optional[List[str]] = None,
+        target: Optional[str] = None,
+        lookback_years: Optional[int] = None,
         **kwargs
     ) -> Dict[str, Any]:
         """
-        Run ML analysis using PRISM lenses.
+        Run ML-based analysis.
 
         Args:
-            df: Optional DataFrame (loads from registry if None)
-            lenses: List of lenses to run (uses ML-focused defaults if None)
-            **kwargs: Additional parameters for lenses
+            target: Optional target variable for supervised learning
+            lookback_years: Number of years to analyze
+            **kwargs: Additional analysis parameters
 
         Returns:
-            Dictionary with analysis results
+            Dictionary with ML analysis results
         """
-        # Load data if not provided
-        if df is None:
-            df = self.load_data()
+        lookback = lookback_years or self._default_config.get('default_lookback_years', 5)
 
-        if df is None or df.empty:
-            return {"error": "No data available for analysis"}
+        df = self.panel.copy()
 
-        # Default lenses for ML analysis
-        if lenses is None:
-            lenses = ["pca", "clustering", "anomaly", "mutual_info"]
+        # Filter by lookback period
+        if lookback and hasattr(df.index, 'year'):
+            cutoff = datetime.now().year - lookback
+            df = df[df.index.year >= cutoff]
 
-        # Import analysis components
-        try:
-            from loader import run_lens, compute_consensus
-        except ImportError:
-            logger.warning("Loader not available, using basic analysis")
-            return self._basic_analysis(df)
+        # Drop columns with too many NaNs
+        nan_threshold = self._default_config.get('nan_threshold', 0.5)
+        valid_cols = df.columns[df.isna().mean() < nan_threshold]
+        df = df[valid_cols]
 
-        # Run lenses
-        results = {}
-        for lens_name in lenses:
-            try:
-                value_cols = [c for c in df.columns if c != "date"]
-                panel_data = df[value_cols]
-                results[lens_name] = run_lens(lens_name, panel_data)
-                logger.info(f"Completed {lens_name} lens")
-            except Exception as e:
-                logger.warning(f"Lens {lens_name} failed: {e}")
-                results[lens_name] = {"error": str(e)}
+        # Forward fill then drop remaining NaNs
+        df = df.ffill().dropna()
 
-        # Compute consensus if multiple lenses succeeded
-        valid_results = {k: v for k, v in results.items() if "error" not in v}
-        if len(valid_results) > 1:
-            try:
-                consensus = compute_consensus(valid_results)
-                results["consensus"] = consensus.to_dict() if hasattr(consensus, "to_dict") else consensus
-            except Exception as e:
-                logger.warning(f"Consensus computation failed: {e}")
-
-        # Add ML-specific analysis
-        results["feature_analysis"] = self._compute_feature_analysis(df)
-        results["anomaly_detection"] = self._detect_anomalies_internal(df)
-        results["regime_analysis"] = self._analyze_regimes(df)
-
-        self._results = results
-        return results
-
-    def _basic_analysis(self, df: pd.DataFrame) -> Dict[str, Any]:
-        """Basic analysis when full lens framework is unavailable."""
-        value_cols = [c for c in df.columns if c != "date"]
-        panel = df[value_cols]
-
-        # Compute basic statistics
-        stats = {
-            "mean": panel.mean().to_dict(),
-            "std": panel.std().to_dict(),
-            "correlation": panel.corr().to_dict(),
+        results = {
+            'timestamp': datetime.now().isoformat(),
+            'engine': self.name,
+            'n_features': len(df.columns),
+            'n_observations': len(df),
+            'date_range': {
+                'start': str(df.index.min()) if len(df) > 0 else None,
+                'end': str(df.index.max()) if len(df) > 0 else None,
+            },
         }
 
         # PCA-based feature importance
-        normalized = (panel - panel.mean()) / panel.std()
-        normalized = normalized.fillna(0)
+        results['pca_analysis'] = self._run_pca(df)
 
+        # Clustering analysis
+        results['clustering'] = self._run_clustering(df)
+
+        # Feature correlation analysis
+        results['correlation_groups'] = self._find_correlation_groups(df)
+
+        # Rolling pattern detection
+        results['patterns'] = self._detect_patterns(df)
+
+        # Top indicators based on ML analysis
+        results['top_indicators'] = self._rank_features(df, results)
+
+        # Supervised analysis if target provided
+        if target and target in df.columns:
+            results['supervised_analysis'] = self._run_supervised(df, target)
+
+        self._last_results = results
+        return results
+
+    def _run_pca(self, df: pd.DataFrame) -> Dict[str, Any]:
+        """Run PCA analysis for dimensionality reduction and feature importance."""
+        # Standardize data
+        X = (df - df.mean()) / df.std()
+        X = X.fillna(0)
+
+        # SVD-based PCA
         try:
-            U, S, Vt = np.linalg.svd(normalized.values, full_matrices=False)
-            explained_var = (S ** 2) / (len(normalized) - 1)
-            explained_var_ratio = explained_var / explained_var.sum()
+            U, S, Vt = np.linalg.svd(X.values, full_matrices=False)
+        except np.linalg.LinAlgError:
+            return {'error': 'SVD did not converge'}
 
-            # Feature importance from top 3 components
-            loadings = Vt[:3].T * S[:3]
-            importance = np.abs(loadings).sum(axis=1)
-            stats["pca_importance"] = dict(zip(panel.columns, importance))
-            stats["explained_variance"] = explained_var_ratio[:5].tolist()
-        except Exception as e:
-            logger.warning(f"PCA failed: {e}")
+        # Explained variance
+        explained_var = (S ** 2) / (len(X) - 1)
+        explained_var_ratio = explained_var / explained_var.sum()
+        cumulative_var = np.cumsum(explained_var_ratio)
 
-        return {"basic_stats": stats}
+        # Number of components for different thresholds
+        n_for_80 = int(np.searchsorted(cumulative_var, 0.8) + 1)
+        n_for_90 = int(np.searchsorted(cumulative_var, 0.9) + 1)
+        n_for_95 = int(np.searchsorted(cumulative_var, 0.95) + 1)
 
-    def _compute_feature_analysis(self, df: pd.DataFrame) -> Dict[str, Any]:
-        """Compute feature importance and relationships."""
-        value_cols = [c for c in df.columns if c != "date"]
-        panel = df[value_cols]
+        # Feature loadings on first 3 components
+        n_components = min(3, len(S))
+        loadings = pd.DataFrame(
+            Vt[:n_components].T * S[:n_components],
+            index=df.columns,
+            columns=[f'PC{i+1}' for i in range(n_components)]
+        )
 
-        analysis = {}
+        # Feature importance based on loadings
+        feature_importance = np.abs(loadings).sum(axis=1)
+        feature_importance = feature_importance / feature_importance.sum()
 
-        # Normalize data
-        normalized = (panel - panel.mean()) / panel.std()
-        normalized = normalized.fillna(0)
-
-        # PCA-based importance
-        try:
-            U, S, Vt = np.linalg.svd(normalized.values, full_matrices=False)
-
-            # Explained variance
-            explained_var = (S ** 2) / (len(normalized) - 1)
-            total_var = explained_var.sum()
-            explained_var_ratio = explained_var / total_var
-
-            analysis["pca"] = {
-                "n_components_90pct": int(np.searchsorted(np.cumsum(explained_var_ratio), 0.9) + 1),
-                "top_5_variance": explained_var_ratio[:5].tolist(),
-                "cumulative_variance": np.cumsum(explained_var_ratio)[:10].tolist()
-            }
-
-            # Feature importance from loadings
-            n_components = min(5, len(S))
-            loadings = Vt[:n_components].T * S[:n_components]
-            importance = np.abs(loadings).sum(axis=1)
-            importance_normalized = importance / importance.sum()
-
-            analysis["feature_importance"] = {
-                col: float(imp)
-                for col, imp in sorted(
-                    zip(panel.columns, importance_normalized),
-                    key=lambda x: x[1],
-                    reverse=True
-                )
-            }
-
-        except Exception as e:
-            logger.warning(f"Feature analysis failed: {e}")
-            analysis["error"] = str(e)
-
-        # Correlation clusters
-        try:
-            corr_matrix = panel.corr()
-            high_corr_pairs = []
-
-            for i, col1 in enumerate(corr_matrix.columns):
-                for j, col2 in enumerate(corr_matrix.columns):
-                    if i < j:
-                        corr_val = corr_matrix.iloc[i, j]
-                        if abs(corr_val) > 0.7:
-                            high_corr_pairs.append({
-                                "pair": [col1, col2],
-                                "correlation": float(corr_val)
-                            })
-
-            analysis["high_correlation_pairs"] = sorted(
-                high_corr_pairs,
-                key=lambda x: abs(x["correlation"]),
-                reverse=True
-            )[:20]
-
-        except Exception as e:
-            logger.warning(f"Correlation analysis failed: {e}")
-
-        return analysis
-
-    def _detect_anomalies_internal(self, df: pd.DataFrame) -> Dict[str, Any]:
-        """Internal anomaly detection using statistical methods."""
-        value_cols = [c for c in df.columns if c != "date"]
-        panel = df[value_cols]
-
-        anomalies = {
-            "zscore_anomalies": {},
-            "iqr_anomalies": {},
-            "summary": {}
+        return {
+            'n_components_80pct': n_for_80,
+            'n_components_90pct': n_for_90,
+            'n_components_95pct': n_for_95,
+            'explained_variance_ratio': explained_var_ratio[:5].tolist(),
+            'cumulative_variance': cumulative_var[:5].tolist(),
+            'feature_importance': feature_importance.sort_values(ascending=False).head(10).to_dict(),
+            'top_pc1_features': loadings['PC1'].abs().sort_values(ascending=False).head(5).to_dict(),
         }
 
-        total_anomalies = 0
+    def _run_clustering(self, df: pd.DataFrame, n_clusters: int = 5) -> Dict[str, Any]:
+        """Run k-means-style clustering on features."""
+        # Standardize
+        X = (df - df.mean()) / df.std()
+        X = X.fillna(0)
 
-        for col in panel.columns:
-            series = panel[col].dropna()
-            if len(series) < 20:
-                continue
+        # Use correlation as distance metric
+        corr = X.corr()
+        dist = 1 - np.abs(corr.values)
 
-            # Z-score anomalies (|z| > 3)
-            mean = series.mean()
-            std = series.std()
-            if std > 0:
-                z_scores = (series - mean) / std
-                zscore_anomaly_idx = z_scores[abs(z_scores) > 3].index.tolist()
+        # Simple k-means on correlation structure
+        np.random.seed(42)
+        n_features = len(df.columns)
+        n_clusters = min(n_clusters, n_features // 2)
 
-                if zscore_anomaly_idx:
-                    anomalies["zscore_anomalies"][col] = {
-                        "count": len(zscore_anomaly_idx),
-                        "latest_anomaly": str(zscore_anomaly_idx[-1]) if zscore_anomaly_idx else None,
-                        "max_zscore": float(abs(z_scores).max())
-                    }
-                    total_anomalies += len(zscore_anomaly_idx)
+        # Initialize cluster centers
+        centers_idx = np.random.choice(n_features, n_clusters, replace=False)
 
-            # IQR anomalies
-            q1 = series.quantile(0.25)
-            q3 = series.quantile(0.75)
-            iqr = q3 - q1
+        labels = np.zeros(n_features, dtype=int)
 
-            if iqr > 0:
-                lower_bound = q1 - 1.5 * iqr
-                upper_bound = q3 + 1.5 * iqr
-                iqr_anomaly_idx = series[(series < lower_bound) | (series > upper_bound)].index.tolist()
+        # Iterate
+        for _ in range(10):
+            # Assign to nearest center
+            for i in range(n_features):
+                distances = [dist[i, c] for c in centers_idx]
+                labels[i] = np.argmin(distances)
 
-                if iqr_anomaly_idx:
-                    anomalies["iqr_anomalies"][col] = {
-                        "count": len(iqr_anomaly_idx),
-                        "latest_anomaly": str(iqr_anomaly_idx[-1]) if iqr_anomaly_idx else None,
-                        "bounds": [float(lower_bound), float(upper_bound)]
-                    }
+            # Update centers
+            for k in range(n_clusters):
+                cluster_members = np.where(labels == k)[0]
+                if len(cluster_members) > 0:
+                    avg_dist = [dist[m, cluster_members].mean() for m in cluster_members]
+                    centers_idx[k] = cluster_members[np.argmin(avg_dist)]
 
-        anomalies["summary"] = {
-            "total_zscore_anomalies": total_anomalies,
-            "indicators_with_anomalies": len(anomalies["zscore_anomalies"]),
-            "total_indicators": len(panel.columns)
-        }
-
-        return anomalies
-
-    def _analyze_regimes(self, df: pd.DataFrame) -> Dict[str, Any]:
-        """Analyze market regimes using simple statistical methods."""
-        value_cols = [c for c in df.columns if c != "date"]
-        panel = df[value_cols]
-
-        regimes = {}
-
-        # Rolling volatility regime
-        window = min(60, len(panel) // 4)
-        if window > 10:
-            rolling_vol = panel.std(axis=1).rolling(window).mean()
-
-            if len(rolling_vol.dropna()) > 0:
-                current_vol = rolling_vol.iloc[-1]
-                vol_percentile = (rolling_vol < current_vol).mean() * 100
-
-                regimes["volatility_regime"] = {
-                    "current_level": float(current_vol) if not pd.isna(current_vol) else None,
-                    "percentile": float(vol_percentile) if not pd.isna(vol_percentile) else None,
-                    "regime": "high" if vol_percentile > 70 else ("low" if vol_percentile < 30 else "normal")
+        # Build cluster info
+        clusters = {}
+        for k in range(n_clusters):
+            members = df.columns[labels == k].tolist()
+            if members:
+                clusters[f'cluster_{k}'] = {
+                    'members': members,
+                    'n_members': len(members),
+                    'center': df.columns[centers_idx[k]],
                 }
 
-        # Correlation regime
-        if len(panel) > window * 2:
-            # Recent correlation vs historical
-            recent_corr = panel.tail(window).corr().values
-            historical_corr = panel.head(len(panel) - window).corr().values
-
-            # Average correlation (excluding diagonal)
-            mask = ~np.eye(recent_corr.shape[0], dtype=bool)
-            recent_avg_corr = recent_corr[mask].mean()
-            historical_avg_corr = historical_corr[mask].mean()
-
-            regimes["correlation_regime"] = {
-                "recent_avg_correlation": float(recent_avg_corr),
-                "historical_avg_correlation": float(historical_avg_corr),
-                "regime": "high_correlation" if recent_avg_corr > historical_avg_corr + 0.1 else (
-                    "low_correlation" if recent_avg_corr < historical_avg_corr - 0.1 else "normal"
-                )
-            }
-
-        # Trend regime (based on first principal component)
-        normalized = (panel - panel.mean()) / panel.std()
-        normalized = normalized.fillna(0)
-
-        try:
-            U, S, Vt = np.linalg.svd(normalized.values, full_matrices=False)
-            pc1 = U[:, 0] * S[0]
-
-            # Recent vs historical trend
-            recent_pc1 = pc1[-window:].mean() if len(pc1) > window else pc1.mean()
-            historical_pc1 = pc1[:-window].mean() if len(pc1) > window else 0
-
-            regimes["trend_regime"] = {
-                "recent_pc1": float(recent_pc1),
-                "historical_pc1": float(historical_pc1),
-                "regime": "uptrend" if recent_pc1 > historical_pc1 + 0.5 else (
-                    "downtrend" if recent_pc1 < historical_pc1 - 0.5 else "sideways"
-                )
-            }
-        except Exception as e:
-            logger.warning(f"Trend regime analysis failed: {e}")
-
-        return regimes
-
-    def detect_anomalies(
-        self,
-        method: str = "zscore",
-        threshold: float = 3.0
-    ) -> pd.DataFrame:
-        """
-        Detect anomalies in the panel data.
-
-        Args:
-            method: "zscore" or "iqr"
-            threshold: Threshold for anomaly detection (z-score or IQR multiplier)
-
-        Returns:
-            DataFrame with anomaly flags
-        """
-        if self._panel is None:
-            self.load_data()
-
-        if self._panel is None:
-            return pd.DataFrame()
-
-        value_cols = [c for c in self._panel.columns if c != "date"]
-        panel = self._panel[value_cols].copy()
-
-        if method == "zscore":
-            normalized = (panel - panel.mean()) / panel.std()
-            anomaly_mask = abs(normalized) > threshold
-        elif method == "iqr":
-            q1 = panel.quantile(0.25)
-            q3 = panel.quantile(0.75)
-            iqr = q3 - q1
-            lower = q1 - threshold * iqr
-            upper = q3 + threshold * iqr
-            anomaly_mask = (panel < lower) | (panel > upper)
-        else:
-            raise ValueError(f"Unknown method: {method}")
-
-        # Add date back
-        result = anomaly_mask.copy()
-        if "date" in self._panel.columns:
-            result.insert(0, "date", self._panel["date"])
-
-        return result
-
-    def get_feature_importance(self, top_n: int = 10) -> List[Tuple[str, float]]:
-        """
-        Get top features by importance.
-
-        Args:
-            top_n: Number of features to return
-
-        Returns:
-            List of (feature_name, importance_score) tuples
-        """
-        if self._results is None:
-            self.analyze()
-
-        if self._results and "feature_analysis" in self._results:
-            fa = self._results["feature_analysis"]
-            if "feature_importance" in fa:
-                imp = fa["feature_importance"]
-                sorted_imp = sorted(imp.items(), key=lambda x: x[1], reverse=True)
-                return sorted_imp[:top_n]
-
-        return []
-
-    def get_panel_info(self) -> Dict[str, Any]:
-        """Get information about the loaded panel."""
-        registry = get_registry("system")
-
-        info = {
-            "panel_name": self.panel_name,
-            "panel_path": str(get_panel_path(self.panel_name)),
-            "indicators": self.indicators if self.indicators else "all",
-            "engine_type": self.name,
+        return {
+            'n_clusters': n_clusters,
+            'clusters': clusters,
+            'silhouette_approx': self._approx_silhouette(dist, labels),
         }
 
-        if self._panel is not None:
-            info["loaded"] = True
-            info["shape"] = self._panel.shape
-            info["columns"] = [c for c in self._panel.columns if c != "date"]
-            info["date_range"] = [
-                str(self._panel["date"].min()) if "date" in self._panel.columns else "N/A",
-                str(self._panel["date"].max()) if "date" in self._panel.columns else "N/A"
-            ]
-        else:
-            info["loaded"] = False
+    def _approx_silhouette(self, dist: np.ndarray, labels: np.ndarray) -> float:
+        """Approximate silhouette score."""
+        n = len(labels)
+        if n < 2:
+            return 0.0
 
-        return info
+        silhouettes = []
+        for i in range(n):
+            # Intra-cluster distance
+            same_cluster = np.where(labels == labels[i])[0]
+            if len(same_cluster) > 1:
+                a = dist[i, same_cluster[same_cluster != i]].mean()
+            else:
+                a = 0
+
+            # Nearest cluster distance
+            b_vals = []
+            for k in np.unique(labels):
+                if k != labels[i]:
+                    other_cluster = np.where(labels == k)[0]
+                    if len(other_cluster) > 0:
+                        b_vals.append(dist[i, other_cluster].mean())
+
+            b = min(b_vals) if b_vals else 0
+
+            if max(a, b) > 0:
+                silhouettes.append((b - a) / max(a, b))
+            else:
+                silhouettes.append(0)
+
+        return float(np.mean(silhouettes))
+
+    def _find_correlation_groups(self, df: pd.DataFrame, threshold: float = 0.7) -> Dict[str, Any]:
+        """Find groups of highly correlated features."""
+        corr = df.corr()
+
+        # Find pairs above threshold
+        high_corr_pairs = []
+        for i, col1 in enumerate(corr.columns):
+            for j, col2 in enumerate(corr.columns):
+                if i < j:
+                    corr_val = corr.loc[col1, col2]
+                    if abs(corr_val) > threshold:
+                        high_corr_pairs.append({
+                            'feature1': col1,
+                            'feature2': col2,
+                            'correlation': float(corr_val)
+                        })
+
+        # Group connected features
+        groups = []
+        used = set()
+
+        for pair in sorted(high_corr_pairs, key=lambda x: abs(x['correlation']), reverse=True):
+            f1, f2 = pair['feature1'], pair['feature2']
+
+            # Find existing groups
+            group_idx = None
+            for i, group in enumerate(groups):
+                if f1 in group or f2 in group:
+                    group_idx = i
+                    break
+
+            if group_idx is not None:
+                groups[group_idx].add(f1)
+                groups[group_idx].add(f2)
+            else:
+                groups.append({f1, f2})
+
+            used.add(f1)
+            used.add(f2)
+
+        return {
+            'n_groups': len(groups),
+            'groups': [list(g) for g in groups],
+            'high_correlation_pairs': high_corr_pairs[:10],
+        }
+
+    def _detect_patterns(self, df: pd.DataFrame) -> Dict[str, Any]:
+        """Detect patterns like trends and seasonality."""
+        patterns = {}
+
+        for col in df.columns:
+            series = df[col].dropna()
+            if len(series) < 24:  # Need at least 2 years of monthly data
+                continue
+
+            # Trend detection via linear regression
+            x = np.arange(len(series))
+            y = series.values
+
+            # Simple linear regression
+            x_mean = x.mean()
+            y_mean = y.mean()
+            slope = np.sum((x - x_mean) * (y - y_mean)) / np.sum((x - x_mean) ** 2)
+
+            # R-squared
+            y_pred = slope * (x - x_mean) + y_mean
+            ss_res = np.sum((y - y_pred) ** 2)
+            ss_tot = np.sum((y - y_mean) ** 2)
+            r_squared = 1 - (ss_res / ss_tot) if ss_tot > 0 else 0
+
+            # Trend strength
+            if r_squared > 0.5:
+                trend = 'strong_' + ('up' if slope > 0 else 'down')
+            elif r_squared > 0.2:
+                trend = 'weak_' + ('up' if slope > 0 else 'down')
+            else:
+                trend = 'no_trend'
+
+            # Simple seasonality check (autocorrelation at lag 12)
+            if len(series) >= 24:
+                autocorr_12 = series.autocorr(lag=12)
+                has_seasonality = abs(autocorr_12) > 0.3 if not pd.isna(autocorr_12) else False
+            else:
+                has_seasonality = False
+
+            patterns[col] = {
+                'trend': trend,
+                'trend_r_squared': float(r_squared),
+                'slope': float(slope),
+                'has_seasonality': has_seasonality,
+            }
+
+        return patterns
+
+    def _rank_features(self, df: pd.DataFrame, results: Dict) -> List[Dict[str, Any]]:
+        """Rank features based on ML analysis."""
+        rankings = []
+
+        pca_importance = results.get('pca_analysis', {}).get('feature_importance', {})
+        patterns = results.get('patterns', {})
+
+        for col in df.columns:
+            # PCA importance
+            pca_score = pca_importance.get(col, 0)
+
+            # Pattern score (trend strength)
+            pattern_info = patterns.get(col, {})
+            trend_score = pattern_info.get('trend_r_squared', 0)
+
+            # Combine scores
+            combined_score = 0.6 * pca_score + 0.4 * trend_score
+
+            rankings.append({
+                'indicator': col,
+                'score': float(combined_score),
+                'pca_importance': float(pca_score),
+                'trend_r_squared': float(trend_score),
+                'trend': pattern_info.get('trend', 'unknown'),
+            })
+
+        rankings.sort(key=lambda x: x['score'], reverse=True)
+
+        for i, r in enumerate(rankings):
+            r['rank'] = i + 1
+
+        return rankings[:10]
+
+    def _run_supervised(self, df: pd.DataFrame, target: str) -> Dict[str, Any]:
+        """Run supervised learning analysis with a target variable."""
+        if target not in df.columns:
+            return {'error': f'Target {target} not found'}
+
+        y = df[target]
+        X = df.drop(columns=[target])
+
+        # Standardize
+        X_scaled = (X - X.mean()) / X.std()
+        X_scaled = X_scaled.fillna(0)
+
+        # Calculate correlation with target as simple feature importance
+        correlations = {}
+        for col in X.columns:
+            corr = X[col].corr(y)
+            if not pd.isna(corr):
+                correlations[col] = float(corr)
+
+        # Sort by absolute correlation
+        sorted_corr = sorted(correlations.items(), key=lambda x: abs(x[1]), reverse=True)
+
+        return {
+            'target': target,
+            'n_features': len(X.columns),
+            'feature_target_correlations': dict(sorted_corr[:10]),
+            'most_predictive': sorted_corr[0][0] if sorted_corr else None,
+            'most_predictive_correlation': sorted_corr[0][1] if sorted_corr else 0,
+        }
+
+    def predict_importance(
+        self,
+        forward_periods: int = 12,
+        target: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Predict which indicators will be most important for future returns.
+
+        Args:
+            forward_periods: Number of periods to look ahead
+            target: Target variable (default: first market series)
+
+        Returns:
+            Prediction results
+        """
+        df = self.panel.copy()
+
+        # Default target to SPY if available
+        if target is None:
+            market_cols = self.registry.get_market_series()
+            target = market_cols[0] if market_cols and market_cols[0] in df.columns else df.columns[0]
+
+        if target not in df.columns:
+            return {'error': f'Target {target} not found'}
+
+        # Create forward returns
+        forward_returns = df[target].pct_change(forward_periods).shift(-forward_periods)
+
+        # Create lagged features
+        features = df.drop(columns=[target]).shift(forward_periods)
+
+        # Combine and drop NaNs
+        combined = pd.concat([forward_returns, features], axis=1).dropna()
+
+        if len(combined) < 50:
+            return {'error': 'Insufficient data for prediction analysis'}
+
+        y = combined.iloc[:, 0]
+        X = combined.iloc[:, 1:]
+
+        # Calculate predictive power via correlation
+        predictive_power = {}
+        for col in X.columns:
+            corr = X[col].corr(y)
+            if not pd.isna(corr):
+                predictive_power[col] = float(corr)
+
+        sorted_power = sorted(predictive_power.items(), key=lambda x: abs(x[1]), reverse=True)
+
+        return {
+            'target': target,
+            'forward_periods': forward_periods,
+            'n_observations': len(combined),
+            'predictive_features': dict(sorted_power[:10]),
+            'best_predictor': sorted_power[0][0] if sorted_power else None,
+            'best_predictor_correlation': sorted_power[0][1] if sorted_power else 0,
+        }
 
     def __repr__(self) -> str:
-        n_indicators = len(self.indicators) if self.indicators else "all"
-        return f"PrismMLEngine(panel='{self.panel_name}', indicators={n_indicators})"
+        return f"PrismMLEngine(features={len(self.panel.columns) if self._panel is not None else 'not loaded'})"

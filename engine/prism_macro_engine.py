@@ -1,16 +1,16 @@
 """
-PRISM Macro Engine - Macroeconomic Indicator Analysis
+PRISM Macro Engine - Macroeconomic Data Analysis
 
-Analyzes macroeconomic indicators (GDP, employment, inflation, etc.) using
-registry-driven panel loading and the PRISM lens framework.
-
-This engine focuses on business cycle analysis and economic regime detection.
+This engine focuses on analyzing macroeconomic indicators from FRED and other
+economic data sources. It uses registry-driven configuration to load panel data
+and interpret columns.
 
 Usage:
-    from engine.prism_macro_engine import PrismMacroEngine
+    from engine import PrismMacroEngine
 
     engine = PrismMacroEngine()
     results = engine.analyze()
+    print(results['top_indicators'])
 """
 
 import logging
@@ -18,275 +18,321 @@ from typing import Dict, Any, Optional, List
 from pathlib import Path
 import pandas as pd
 import numpy as np
+from datetime import datetime
 
-# Add parent directory to path for imports
 import sys
-_ENGINE_DIR = Path(__file__).parent.resolve()
-_PROJECT_ROOT = _ENGINE_DIR.parent
-if str(_PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(_PROJECT_ROOT))
+_pkg_root = Path(__file__).parent.parent
+if str(_pkg_root) not in sys.path:
+    sys.path.insert(0, str(_pkg_root))
 
-from utils.panel_loader import (
-    load_panel,
-    get_registry,
-    get_engine_indicators,
-    get_panel_path,
-    PanelLoadError,
-    RegistryError
-)
+from utils.registry import RegistryManager, load_panel, get_economic_series, get_engine_config
 
 logger = logging.getLogger(__name__)
 
 
 class PrismMacroEngine:
     """
-    PRISM Engine for Macroeconomic Analysis.
+    Engine for analyzing macroeconomic indicators.
 
-    Analyzes economic indicators to identify:
-    - Business cycle phases
-    - Leading indicators
-    - Economic regime changes
-    - Cross-indicator relationships
+    This engine:
+    - Loads panel data from registry-specified paths
+    - Focuses on economic series (FRED data)
+    - Provides macro-specific analysis methods
     """
 
-    # Engine metadata
     name = "macro"
     description = "Macroeconomic indicator analysis engine"
-    version = "1.0.0"
+
+    # Economic indicator categories
+    CATEGORIES = {
+        'rates': ['dgs10', 'dgs2', 'dgs3mo'],
+        'spreads': ['t10y2y', 't10y3m'],
+        'inflation': ['cpiaucsl', 'cpilfesl', 'ppiaco'],
+        'labor': ['unrate', 'payems'],
+        'activity': ['indpro', 'houst', 'permit'],
+        'money': ['m2sl', 'walcl'],
+        'financial_conditions': ['anfci', 'nfci'],
+    }
 
     def __init__(
         self,
-        panel_name: str = "default",
-        custom_indicators: Optional[List[str]] = None,
+        project_root: Optional[Path] = None,
         config: Optional[Dict] = None
     ):
         """
-        Initialize the Macro Engine.
+        Initialize the macro engine.
 
         Args:
-            panel_name: Panel to load from registry ("default", "climate", etc.)
-            custom_indicators: Override default macro indicators
-            config: Additional configuration options
+            project_root: Optional project root path
+            config: Optional configuration overrides
         """
-        self.panel_name = panel_name
+        self.registry = RegistryManager(project_root)
         self.config = config or {}
+
+        # Get default config from registry
+        self._default_config = self.registry.get_engine_config() or {}
         self._panel: Optional[pd.DataFrame] = None
-        self._results: Optional[Dict] = None
+        self._last_results: Optional[Dict] = None
 
-        # Get indicators from registry or use custom
-        if custom_indicators is not None:
-            self.indicators = custom_indicators
-        else:
-            self.indicators = get_engine_indicators("macro")
+    @property
+    def panel(self) -> pd.DataFrame:
+        """Lazy-load the panel data."""
+        if self._panel is None:
+            self._panel = self._load_panel()
+        return self._panel
 
-        logger.info(f"PrismMacroEngine initialized with {len(self.indicators)} indicators")
-
-    def load_data(
-        self,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
-        reload: bool = False
-    ) -> pd.DataFrame:
+    def _load_panel(self) -> pd.DataFrame:
         """
-        Load panel data using registry configuration.
-
-        Args:
-            start_date: Optional start date filter (YYYY-MM-DD)
-            end_date: Optional end date filter (YYYY-MM-DD)
-            reload: Force reload even if already loaded
+        Load and filter panel data for economic series only.
 
         Returns:
-            DataFrame with macro indicators
+            DataFrame with economic series
         """
-        if self._panel is not None and not reload:
-            return self._panel
+        # Load from registry-specified path
+        full_panel = self.registry.load_panel(panel_type='master')
 
-        try:
-            self._panel = load_panel(
-                panel_name=self.panel_name,
-                columns=self.indicators,
-                start_date=start_date,
-                end_date=end_date,
-                fill_na=True
-            )
-            logger.info(f"Loaded macro panel: {self._panel.shape}")
-            return self._panel
+        # Get economic series columns from registry
+        economic_cols = self.registry.get_economic_series()
 
-        except (PanelLoadError, RegistryError) as e:
-            logger.error(f"Failed to load macro panel: {e}")
-            raise
+        # Filter to available columns
+        available_cols = [c for c in economic_cols if c in full_panel.columns]
+
+        if not available_cols:
+            logger.warning("No economic columns found in panel. Using all columns.")
+            return full_panel
+
+        logger.info(f"Loaded {len(available_cols)} economic series from panel")
+        return full_panel[available_cols]
+
+    def reload_panel(self) -> pd.DataFrame:
+        """Force reload of panel data."""
+        self._panel = None
+        return self.panel
 
     def analyze(
         self,
-        df: Optional[pd.DataFrame] = None,
-        lenses: Optional[List[str]] = None,
+        lookback_years: Optional[int] = None,
+        metrics: Optional[List[str]] = None,
         **kwargs
     ) -> Dict[str, Any]:
         """
-        Run macro analysis using PRISM lenses.
+        Run macroeconomic analysis.
 
         Args:
-            df: Optional DataFrame (loads from registry if None)
-            lenses: List of lenses to run (uses defaults if None)
-            **kwargs: Additional parameters for lenses
+            lookback_years: Number of years to analyze (default from config)
+            metrics: List of metrics to analyze (default: all available)
+            **kwargs: Additional analysis parameters
 
         Returns:
             Dictionary with analysis results
         """
-        # Load data if not provided
-        if df is None:
-            df = self.load_data()
+        lookback = lookback_years or self._default_config.get('default_lookback_years', 5)
 
-        if df is None or df.empty:
-            return {"error": "No data available for analysis"}
+        # Get data
+        df = self.panel.copy()
 
-        # Default lenses for macro analysis
-        if lenses is None:
-            lenses = ["magnitude", "pca", "decomposition", "regime"]
+        # Filter by lookback period
+        if lookback and hasattr(df.index, 'year'):
+            cutoff = datetime.now().year - lookback
+            df = df[df.index.year >= cutoff]
 
-        # Import analysis components
-        try:
-            from loader import run_lens, compute_consensus
-        except ImportError:
-            logger.warning("Loader not available, using basic analysis")
-            return self._basic_analysis(df)
+        # Filter to specific metrics if provided
+        if metrics:
+            available = [m for m in metrics if m in df.columns]
+            df = df[available]
 
-        # Run lenses
-        results = {}
-        for lens_name in lenses:
-            try:
-                value_cols = [c for c in df.columns if c != "date"]
-                panel_data = df[value_cols]
-                results[lens_name] = run_lens(lens_name, panel_data)
-                logger.info(f"Completed {lens_name} lens")
-            except Exception as e:
-                logger.warning(f"Lens {lens_name} failed: {e}")
-                results[lens_name] = {"error": str(e)}
+        # Drop rows with too many NaNs
+        nan_threshold = self._default_config.get('nan_threshold', 0.5)
+        df = df.dropna(thresh=int(len(df.columns) * (1 - nan_threshold)))
 
-        # Compute consensus if multiple lenses succeeded
-        valid_results = {k: v for k, v in results.items() if "error" not in v}
-        if len(valid_results) > 1:
-            try:
-                consensus = compute_consensus(valid_results)
-                results["consensus"] = consensus.to_dict() if hasattr(consensus, "to_dict") else consensus
-            except Exception as e:
-                logger.warning(f"Consensus computation failed: {e}")
+        # Run analysis
+        results = {
+            'timestamp': datetime.now().isoformat(),
+            'engine': self.name,
+            'n_series': len(df.columns),
+            'n_observations': len(df),
+            'date_range': {
+                'start': str(df.index.min()) if len(df) > 0 else None,
+                'end': str(df.index.max()) if len(df) > 0 else None,
+            },
+            'series_analyzed': list(df.columns),
+        }
 
-        # Add macro-specific metrics
-        results["macro_metrics"] = self._compute_macro_metrics(df)
+        # Calculate basic statistics
+        results['statistics'] = self._compute_statistics(df)
 
-        self._results = results
+        # Calculate correlations
+        results['correlations'] = self._compute_correlations(df)
+
+        # Calculate momentum indicators
+        results['momentum'] = self._compute_momentum(df)
+
+        # Identify top indicators
+        results['top_indicators'] = self._rank_indicators(df)
+
+        # Categorize by economic theme
+        results['category_analysis'] = self._analyze_categories(df)
+
+        self._last_results = results
         return results
 
-    def _basic_analysis(self, df: pd.DataFrame) -> Dict[str, Any]:
-        """Basic analysis when full lens framework is unavailable."""
-        value_cols = [c for c in df.columns if c != "date"]
-        panel = df[value_cols]
+    def _compute_statistics(self, df: pd.DataFrame) -> Dict[str, Any]:
+        """Compute descriptive statistics."""
+        stats = {}
 
-        # Compute basic statistics
-        stats = {
-            "mean": panel.mean().to_dict(),
-            "std": panel.std().to_dict(),
-            "correlation": panel.corr().to_dict(),
+        for col in df.columns:
+            series = df[col].dropna()
+            if len(series) == 0:
+                continue
+
+            stats[col] = {
+                'mean': float(series.mean()),
+                'std': float(series.std()),
+                'min': float(series.min()),
+                'max': float(series.max()),
+                'current': float(series.iloc[-1]) if len(series) > 0 else None,
+                'pct_change_1y': float(series.pct_change(12).iloc[-1]) if len(series) > 12 else None,
+            }
+
+        return stats
+
+    def _compute_correlations(self, df: pd.DataFrame) -> Dict[str, Any]:
+        """Compute correlation matrix and identify key relationships."""
+        corr_matrix = df.corr()
+
+        # Find highest correlations
+        high_corr = []
+        for i, col1 in enumerate(corr_matrix.columns):
+            for j, col2 in enumerate(corr_matrix.columns):
+                if i < j:
+                    corr_val = corr_matrix.loc[col1, col2]
+                    if abs(corr_val) > 0.7:
+                        high_corr.append({
+                            'series1': col1,
+                            'series2': col2,
+                            'correlation': float(corr_val)
+                        })
+
+        return {
+            'high_correlations': sorted(high_corr, key=lambda x: abs(x['correlation']), reverse=True)[:10],
+            'avg_correlation': float(corr_matrix.values[np.triu_indices_from(corr_matrix.values, 1)].mean()),
         }
 
-        # L2 norm importance
-        normalized = (panel - panel.mean()) / panel.std()
-        magnitude = np.sqrt((normalized ** 2).sum())
-        stats["magnitude_importance"] = magnitude.to_dict()
+    def _compute_momentum(self, df: pd.DataFrame) -> Dict[str, Any]:
+        """Compute momentum indicators."""
+        momentum = {}
 
-        return {"basic_stats": stats}
+        for col in df.columns:
+            series = df[col].dropna()
+            if len(series) < 13:
+                continue
 
-    def _compute_macro_metrics(self, df: pd.DataFrame) -> Dict[str, Any]:
-        """Compute macroeconomic-specific metrics."""
-        value_cols = [c for c in df.columns if c != "date"]
-        panel = df[value_cols]
+            # Calculate z-score of recent changes
+            changes = series.pct_change(12)
+            if changes.std() > 0:
+                z_score = (changes.iloc[-1] - changes.mean()) / changes.std()
+            else:
+                z_score = 0
 
-        metrics = {}
-
-        # YoY changes for inflation indicators
-        inflation_indicators = [c for c in ["cpi", "cpi_core", "ppi"] if c in panel.columns]
-        if inflation_indicators:
-            for ind in inflation_indicators:
-                if len(panel[ind].dropna()) > 12:
-                    yoy_change = panel[ind].pct_change(periods=12) * 100
-                    metrics[f"{ind}_yoy"] = {
-                        "latest": float(yoy_change.iloc[-1]) if not pd.isna(yoy_change.iloc[-1]) else None,
-                        "mean": float(yoy_change.mean()),
-                        "std": float(yoy_change.std())
-                    }
-
-        # Employment metrics
-        if "unrate" in panel.columns:
-            unrate = panel["unrate"]
-            metrics["unemployment"] = {
-                "latest": float(unrate.iloc[-1]) if not pd.isna(unrate.iloc[-1]) else None,
-                "trend_12m": float(unrate.iloc[-1] - unrate.iloc[-12]) if len(unrate) > 12 else None
+            momentum[col] = {
+                'pct_change_12m': float(changes.iloc[-1]) if not pd.isna(changes.iloc[-1]) else 0,
+                'z_score': float(z_score),
+                'trend': 'up' if changes.iloc[-1] > 0 else 'down',
             }
 
-        # Liquidity metrics
-        if "m2" in panel.columns:
-            m2 = panel["m2"]
-            metrics["m2_growth"] = {
-                "yoy": float(m2.pct_change(periods=12).iloc[-1] * 100) if len(m2) > 12 else None
+        return momentum
+
+    def _rank_indicators(self, df: pd.DataFrame) -> List[Dict[str, Any]]:
+        """Rank indicators by activity/importance."""
+        rankings = []
+
+        for col in df.columns:
+            series = df[col].dropna()
+            if len(series) < 12:
+                continue
+
+            # Score based on: volatility, recent change magnitude, data quality
+            volatility = series.std() / series.mean() if series.mean() != 0 else 0
+            recent_change = abs(series.pct_change(12).iloc[-1]) if len(series) > 12 else 0
+            data_quality = len(series) / len(df)
+
+            # Composite score
+            score = (0.4 * abs(volatility) + 0.4 * recent_change + 0.2 * data_quality)
+
+            rankings.append({
+                'indicator': col,
+                'score': float(score),
+                'volatility': float(volatility),
+                'recent_change': float(recent_change) if not pd.isna(recent_change) else 0,
+            })
+
+        # Sort by score
+        rankings.sort(key=lambda x: x['score'], reverse=True)
+
+        # Add rank
+        for i, r in enumerate(rankings):
+            r['rank'] = i + 1
+
+        return rankings[:10]
+
+    def _analyze_categories(self, df: pd.DataFrame) -> Dict[str, Any]:
+        """Analyze indicators by economic category."""
+        category_analysis = {}
+
+        for category, indicators in self.CATEGORIES.items():
+            available = [i for i in indicators if i in df.columns]
+            if not available:
+                continue
+
+            cat_df = df[available].dropna()
+            if len(cat_df) == 0:
+                continue
+
+            # Calculate category-level metrics
+            category_analysis[category] = {
+                'indicators': available,
+                'n_indicators': len(available),
+                'avg_correlation': float(cat_df.corr().values.mean()),
+                'combined_volatility': float(cat_df.std().mean()),
             }
 
-        return metrics
+        return category_analysis
 
-    def get_leading_indicators(self, top_n: int = 5) -> List[str]:
+    def get_indicator_details(self, indicator: str) -> Dict[str, Any]:
         """
-        Get the top leading indicators from the last analysis.
+        Get detailed analysis for a specific indicator.
 
         Args:
-            top_n: Number of indicators to return
+            indicator: Indicator name
 
         Returns:
-            List of indicator names
+            Dictionary with indicator details
         """
-        if self._results is None:
-            logger.warning("No analysis results available. Run analyze() first.")
-            return []
+        if indicator not in self.panel.columns:
+            return {'error': f'Indicator {indicator} not found in panel'}
 
-        # Try to extract from consensus
-        if "consensus" in self._results:
-            consensus = self._results["consensus"]
-            if isinstance(consensus, dict) and "avg_rank" in str(consensus):
-                # Extract top indicators
-                pass
+        series = self.panel[indicator].dropna()
 
-        # Fall back to magnitude importance
-        if "magnitude" in self._results and "importance" in self._results["magnitude"]:
-            importance = self._results["magnitude"]["importance"]
-            if isinstance(importance, pd.Series):
-                return list(importance.sort_values(ascending=False).head(top_n).index)
-            elif isinstance(importance, dict):
-                sorted_imp = sorted(importance.items(), key=lambda x: x[1], reverse=True)
-                return [k for k, v in sorted_imp[:top_n]]
+        if len(series) == 0:
+            return {'error': f'No data for indicator {indicator}'}
 
-        return []
-
-    def get_panel_info(self) -> Dict[str, Any]:
-        """Get information about the loaded panel."""
-        registry = get_registry("system")
-
-        info = {
-            "panel_name": self.panel_name,
-            "panel_path": str(get_panel_path(self.panel_name)),
-            "indicators": self.indicators,
-            "engine_type": self.name,
+        return {
+            'indicator': indicator,
+            'n_observations': len(series),
+            'date_range': {
+                'start': str(series.index.min()),
+                'end': str(series.index.max()),
+            },
+            'current_value': float(series.iloc[-1]),
+            'statistics': {
+                'mean': float(series.mean()),
+                'std': float(series.std()),
+                'min': float(series.min()),
+                'max': float(series.max()),
+                'median': float(series.median()),
+            },
+            'percentile_current': float((series <= series.iloc[-1]).mean() * 100),
         }
 
-        if self._panel is not None:
-            info["loaded"] = True
-            info["shape"] = self._panel.shape
-            info["date_range"] = [
-                str(self._panel["date"].min()) if "date" in self._panel.columns else "N/A",
-                str(self._panel["date"].max()) if "date" in self._panel.columns else "N/A"
-            ]
-        else:
-            info["loaded"] = False
-
-        return info
-
     def __repr__(self) -> str:
-        return f"PrismMacroEngine(panel='{self.panel_name}', indicators={len(self.indicators)})"
+        return f"PrismMacroEngine(series={len(self.panel.columns) if self._panel is not None else 'not loaded'})"
