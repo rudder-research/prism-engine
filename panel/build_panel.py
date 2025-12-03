@@ -71,28 +71,52 @@ def load_system_registry() -> dict:
     return load_registry(registry_path)
 
 
-def load_market_registry() -> dict:
+def _get_registry_paths():
     """
-    Load the market registry.
+    Resolve registry paths from the new system_registry.json structure.
 
     Returns:
-        Market registry dictionary
+        dict: {"market": Path, "economic": Path}
     """
-    system_reg = load_system_registry()
-    market_path = PROJECT_ROOT / system_reg["registries"]["market"]
-    return load_registry(market_path)
+    system_path = PROJECT_ROOT / "data" / "registry" / "system_registry.json"
+    with open(system_path, "r") as f:
+        system_reg = json.load(f)
+
+    # Navigate new structure
+    finance = system_reg["systems"]["finance"]
+    registry_list = finance["registries"]  # list of filenames
+
+    # Expect: ["market_registry.json", "economic_registry.json"]
+    registry_paths = {}
+    for reg in registry_list:
+        if "market" in reg.lower():
+            registry_paths["market"] = PROJECT_ROOT / "data" / "registry" / reg
+        elif "economic" in reg.lower():
+            registry_paths["economic"] = PROJECT_ROOT / "data" / "registry" / reg
+
+    if "market" not in registry_paths:
+        raise KeyError("Market registry not found in system_registry.json")
+
+    if "economic" not in registry_paths:
+        raise KeyError("Economic registry not found in system_registry.json")
+
+    return registry_paths
 
 
-def load_economic_registry() -> dict:
-    """
-    Load the economic registry.
+def load_market_registry():
+    """Load market registry."""
+    paths = _get_registry_paths()
+    with open(paths["market"], "r") as f:
+        reg = json.load(f)
+    return reg
 
-    Returns:
-        Economic registry dictionary
-    """
-    system_reg = load_system_registry()
-    econ_path = PROJECT_ROOT / system_reg["registries"]["economic"]
-    return load_registry(econ_path)
+
+def load_economic_registry():
+    """Load economic registry."""
+    paths = _get_registry_paths()
+    with open(paths["economic"], "r") as f:
+        reg = json.load(f)
+    return reg
 
 
 def get_db_module():
