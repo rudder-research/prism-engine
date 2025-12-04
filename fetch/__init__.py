@@ -2,27 +2,28 @@
 PRISM Engine - Data Fetching Module
 
 Fetchers for various data sources:
-- YahooFetcher: Market data from Yahoo Finance
+- StooqFetcher: Primary market data (Stooq daily CSV)
+- YahooFetcher: Market data from Yahoo Finance (fallback / special cases)
 - FREDFetcher: Economic data from FRED
-- ClimateFetcher: Climate data (placeholder)
+- HybridFetcher: Stooq primary + Yahoo fallback wrapper
+- ClimateFetcher: Climate data (optional / placeholder)
 - CustomFetcher: Custom data sources
 
-Usage:
-    from fetch import YahooFetcher, FREDFetcher
-    
-    yahoo = YahooFetcher()
+Usage examples:
+
+    from fetch import StooqFetcher, YahooFetcher, FREDFetcher, HybridFetcher
+
+    stq = StooqFetcher()
+    yfh = YahooFetcher()
     fred = FREDFetcher()
-    
-    # Fetch single
-    df = yahoo.fetch_single("SPY")
-    
-    # Fetch all from registry
-    results = yahoo.fetch_all()
+    hybrid = HybridFetcher()
 """
 
 from .fetcher_base import BaseFetcher
-from .fetcher_fred import FREDFetcher, FetcherFRED
-from .fetcher_yahoo import YahooFetcher, FetcherYahoo
+from .fetcher_fred import FREDFetcher
+from .fetcher_yahoo import YahooFetcher
+from .fetcher_stooq import StooqFetcher
+from .hybrid_fetcher import HybridFetcher
 
 # Optional fetchers (may not be fully implemented)
 try:
@@ -36,11 +37,11 @@ except ImportError:
     CustomFetcher = None
 
 __all__ = [
-    'BaseFetcher',
-    'FREDFetcher',
-    'FetcherFRED',  # alias
-    'YahooFetcher',
-    'FetcherYahoo',  # alias
-    'ClimateFetcher',
-    'CustomFetcher',
+    "BaseFetcher",
+    "FREDFetcher",
+    "YahooFetcher",
+    "StooqFetcher",
+    "HybridFetcher",
+    "ClimateFetcher",
+    "CustomFetcher",
 ]
