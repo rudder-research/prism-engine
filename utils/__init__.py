@@ -1,11 +1,23 @@
 """
 PRISM Engine - Utilities
 """
-from .logging_config import setup_logging
-from .checkpoint_manager import CheckpointManager
-from .db_manager import TemporalDB, init_db, query_indicator_history, query_window_top_n, export_to_csv
 
-# Database connector (migration runner, data insert/load)
+# Logging utilities
+from .logging_config import setup_logging
+
+# Checkpoints
+from .checkpoint_manager import CheckpointManager
+
+# DB Manager (temporal DB)
+from .db_manager import (
+    TemporalDB,
+    init_db,
+    query_indicator_history,
+    query_window_top_n,
+    export_to_csv,
+)
+
+# DB Connector (migration runner, inserts, loads)
 from .db_connector import (
     run_pending_migrations,
     init_database,
@@ -22,7 +34,7 @@ from .db_connector import (
     get_econ_stats,
 )
 
-# Database registry (registry-based connection, query utils)
+# Registry-based DB helpers
 from .db_registry import (
     load_system_registry,
     get_db_path,
@@ -56,7 +68,7 @@ from .number_cleaner import (
     summarize_numeric_issues,
 )
 
-# Fetch validation (DataFrame validation)
+# Fetch validation utilities
 from .fetch_validator import (
     ValidationError,
     ValidationWarning,
@@ -66,14 +78,13 @@ from .fetch_validator import (
     validate_no_duplicate_dates,
     remove_duplicate_dates,
     validate_date_sequence,
-    sort_by_date,
     validate_frequency,
     validate_numeric_columns,
     validate_no_future_dates,
     comprehensive_validate,
 )
 
-# Registry validation
+# Registry validation utilities
 from .registry_validator import (
     validate_all_registries,
     validate_system_registry,
@@ -87,15 +98,18 @@ from .registry_validator import (
 __all__ = [
     # Logging
     'setup_logging',
+
     # Checkpoint
     'CheckpointManager',
-    # DB Manager (temporal)
+
+    # DB Manager
     'TemporalDB',
     'init_db',
     'query_indicator_history',
     'query_window_top_n',
     'export_to_csv',
-    # DB Connector (data operations)
+
+    # DB Connector
     'run_pending_migrations',
     'init_database',
     'insert_market_price',
@@ -109,7 +123,8 @@ __all__ = [
     'log_fetch',
     'get_market_stats',
     'get_econ_stats',
-    # DB Registry (connection/query)
+
+    # Registry helpers
     'load_system_registry',
     'get_db_path',
     'get_path',
@@ -119,6 +134,7 @@ __all__ = [
     'table_exists',
     'get_table_info',
     'get_all_tables',
+
     # Date cleaning
     'parse_date_strict',
     'fix_two_digit_year',
@@ -126,6 +142,7 @@ __all__ = [
     'validate_date_range',
     'clean_date_column',
     'to_iso_date',
+
     # Number cleaning
     'parse_numeric',
     'is_numeric_value',
@@ -134,7 +151,8 @@ __all__ = [
     'coerce_to_float_series',
     'detect_numeric_garbage',
     'summarize_numeric_issues',
-    # Fetch validation (DataFrame)
+
+    # Fetch validation
     'ValidationError',
     'ValidationWarning',
     'validate_dataframe_shape',
@@ -143,4 +161,24 @@ __all__ = [
     'validate_no_duplicate_dates',
     'remove_duplicate_dates',
     'validate_date_sequence',
-    'sort_by
+    'validate_frequency',
+    'validate_numeric_columns',
+    'validate_no_future_dates',
+    'comprehensive_validate',
+
+    # Registry validation
+    'validate_all_registries',
+    'validate_system_registry',
+    'validate_market_registry',
+    'validate_economic_registry',
+    'load_validated_registry',
+    'get_enabled_tickers',
+    'registries_are_valid',
+]
+
+# Sorting helper used by loaders/fetchers
+DEFAULT_SORT_CONFIG = {
+    "sort_by": "date",
+    "ascending": True,
+    "drop_duplicates": True,
+}

@@ -1,9 +1,8 @@
 """
-
-Validation and cleaning functions for fetched data before DB insertion.
+Fetch Validator - Validation and cleaning functions for fetched data.
 
 This module provides the "defense layer" against garbage data entering
-the PRISM database.
+the PRISM database, plus registry validation utilities.
 
 Functions:
     - validate_dataframe_shape: Check minimum rows, column requirements
@@ -14,13 +13,20 @@ Functions:
     - validate_frequency: Check if data frequency matches expected
     - validate_numeric_columns: Ensure numeric columns have valid types
     - comprehensive_validate: Run all validations and return report
+    - validate_system_registry: Validate system registry
+    - validate_market_registry: Validate market registry
+    - validate_economic_registry: Validate economic registry
+    - validate_all_registries: Validate all registries
 """
 
 from __future__ import annotations
 
+import json
 import logging
+import re
 from datetime import date, timedelta
-from typing import Dict, List, Optional, Set, Tuple
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import pandas as pd
 
@@ -29,6 +35,10 @@ from .number_cleaner import is_numeric_value, parse_numeric
 
 logger = logging.getLogger(__name__)
 
+
+# =============================================================================
+# EXCEPTIONS
+# =============================================================================
 
 class ValidationError(Exception):
     """Raised when validation fails critically."""
@@ -45,6 +55,10 @@ class ValidationWarning:
     def __str__(self):
         return f"ValidationWarning: {self.message}"
 
+
+# =============================================================================
+# DATAFRAME VALIDATION FUNCTIONS
+# =============================================================================
 
 def validate_dataframe_shape(
     df: pd.DataFrame,
@@ -95,11 +109,6 @@ def detect_footer_garbage(
     """
     Detect trailing rows that appear to be garbage (footers, notes, etc.).
 
-    Garbage rows typically have:
-    - Invalid dates
-    - Non-numeric values in numeric columns
-    - Repeated patterns indicating source metadata
-
     Args:
         df: DataFrame to check
         date_column: Name of date column
@@ -113,13 +122,10 @@ def detect_footer_garbage(
         return []
 
     garbage_indices = []
-
-    # Check the last N rows
     start_idx = max(0, len(df) - tail_rows)
 
     for idx in range(len(df) - 1, start_idx - 1, -1):
         row = df.iloc[idx]
-
         is_garbage = False
 
         # Check date column
@@ -135,7 +141,6 @@ def detect_footer_garbage(
                 if col in df.columns:
                     val = row[col]
                     if not is_numeric_value(val):
-                        # Check if it looks like a footer (contains letters)
                         if isinstance(val, str) and any(c.isalpha() for c in val):
                             is_garbage = True
                             break
@@ -143,7 +148,6 @@ def detect_footer_garbage(
         if is_garbage:
             garbage_indices.append(idx)
         else:
-            # Stop when we hit valid data (garbage is typically at the end)
             break
 
     return sorted(garbage_indices)
@@ -178,13 +182,7 @@ def remove_footer_garbage(
             f"(indices {min(garbage_indices)}-{max(garbage_indices)})"
         )
 
-        # Log sample of garbage
-        for idx in garbage_indices[:3]:
-            logger.debug(f"  Garbage row {idx}: {df.iloc[idx].to_dict()}")
-
-    # Remove garbage rows
     df_clean = df.drop(index=garbage_indices).reset_index(drop=True)
-
     return df_clean, len(garbage_indices)
 
 
@@ -207,12 +205,10 @@ def validate_no_duplicate_dates(
     if df.empty or date_column not in df.columns:
         return True, [], pd.DataFrame()
 
-    # Build the key columns
     key_cols = [date_column]
     if group_columns:
         key_cols.extend([c for c in group_columns if c in df.columns])
 
-    # Find duplicates
     duplicates = df[df.duplicated(subset=key_cols, keep=False)]
 
     if duplicates.empty:
@@ -221,10 +217,7 @@ def validate_no_duplicate_dates(
     n_dups = len(duplicates)
     unique_dates = duplicates[date_column].nunique()
 
-    errors = [
-        f"Found {n_dups} duplicate rows across {unique_dates} dates"
-    ]
-
+    errors = [f"Found {n_dups} duplicate rows across {unique_dates} dates"]
     return False, errors, duplicates
 
 
@@ -276,7 +269,7 @@ def validate_date_sequence(
     Args:
         df: DataFrame to validate
         date_column: Name of date column
-        ascending: If True, expect ascending order; if False, descending
+        ascending: If True, expect ascending order
 
     Returns:
         Tuple of (is_valid, error messages)
@@ -286,7 +279,6 @@ def validate_date_sequence(
 
     dates = pd.to_datetime(df[date_column], errors='coerce')
 
-    # Check for out-of-order dates
     if ascending:
         out_of_order = dates.diff().lt(timedelta(0)).sum()
     else:
@@ -351,11 +343,9 @@ def validate_frequency(
     if len(dates) < 2:
         return True, []
 
-    # Calculate median gap
     gaps = dates.diff().dropna()
     median_gap_days = gaps.median().days
 
-    # Expected gaps
     expected_gaps = {
         "daily": 1,
         "weekly": 7,
@@ -365,12 +355,9 @@ def validate_frequency(
     }
 
     expected_gap = expected_gaps.get(expected_frequency.lower(), 1)
-
-    # Check if within tolerance
     lower_bound = expected_gap * (1 - tolerance)
     upper_bound = expected_gap * (1 + tolerance)
 
-    # For daily data, also allow for weekends/holidays (up to 3-4 day gaps)
     if expected_frequency.lower() == "daily":
         upper_bound = max(upper_bound, 4)
 
@@ -408,10 +395,7 @@ def validate_numeric_columns(
             errors.append(f"Column '{col}' not found")
             continue
 
-        # Try to convert to numeric
         numeric_series = df[col].apply(parse_numeric)
-
-        # Check for non-numeric values
         nan_count = numeric_series.isna().sum()
         nan_fraction = nan_count / len(df) if len(df) > 0 else 0
 
@@ -498,9 +482,7 @@ def comprehensive_validate(
 
     # 1. Check shape
     valid, errors = validate_dataframe_shape(
-        df_clean,
-        min_rows=min_rows,
-        required_columns=[date_column],
+        df_clean, min_rows=min_rows, required_columns=[date_column]
     )
     if not valid:
         report["errors"].extend(errors)
@@ -510,9 +492,7 @@ def comprehensive_validate(
 
     # 2. Remove footer garbage
     if fix_issues:
-        df_clean, n_removed = remove_footer_garbage(
-            df_clean, date_column, value_columns
-        )
+        df_clean, n_removed = remove_footer_garbage(df_clean, date_column, value_columns)
         if n_removed > 0:
             report["fixes_applied"].append(f"Removed {n_removed} footer garbage rows")
             report["rows_removed"] += n_removed
@@ -567,46 +547,19 @@ def comprehensive_validate(
         report["valid"] = len(report["errors"]) == 0
 
     report["final_rows"] = len(df_clean)
-
     return df_clean, report
-Fetch Validator - Registry validation utilities
-
-Provides validation functions for registry entries to ensure
-data integrity before any fetch operations occur.
-
-Usage:
-    from utils.fetch_validator import (
-        validate_system_registry,
-        validate_market_registry,
-        validate_economic_registry,
-        validate_all_registries
-    )
-
-    # Validate all registries
-    errors = validate_all_registries()
-    if errors:
-        for error in errors:
-            print(f"Validation error: {error}")
-"""
-
-import json
-import re
-from pathlib import Path
-from typing import List, Dict, Any, Optional, Tuple
 
 
 # =============================================================================
-# SCHEMA DEFINITIONS
+# REGISTRY VALIDATION - SCHEMA DEFINITIONS
 # =============================================================================
 
-# Required keys for system registry
 SYSTEM_REGISTRY_SCHEMA = {
     "required_keys": ["paths", "registries"],
     "paths_required": ["data_raw", "data_clean", "db_path"],
     "registries_required": ["market", "economic"]
 }
 
-# Required keys for market entries
 MARKET_ENTRY_SCHEMA = {
     "required_keys": ["fetch_type", "enabled", "frequency", "tables", "use_column"],
     "valid_fetch_types": ["yahoo", "custom"],
@@ -614,19 +567,17 @@ MARKET_ENTRY_SCHEMA = {
     "valid_table_types": ["prices", "dividends", "tri", "splits"]
 }
 
-# Required keys for economic entries
 ECONOMIC_ENTRY_SCHEMA = {
     "required_keys": ["fetch_type", "enabled", "frequency", "table", "code", "use_column"],
     "valid_fetch_types": ["fred", "custom"],
     "valid_frequencies": ["daily", "weekly", "monthly", "quarterly", "annual"]
 }
 
-# Valid SQL identifier pattern (table/column names)
 SQL_IDENTIFIER_PATTERN = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
 
 
 # =============================================================================
-# HELPER FUNCTIONS
+# REGISTRY HELPER FUNCTIONS
 # =============================================================================
 
 def _get_project_root() -> Path:
@@ -635,12 +586,7 @@ def _get_project_root() -> Path:
 
 
 def _load_json(path: Path) -> Tuple[Optional[dict], Optional[str]]:
-    """
-    Load a JSON file safely.
-
-    Returns:
-        Tuple of (data, error_message)
-    """
+    """Load a JSON file safely."""
     if not path.exists():
         return None, f"File not found: {path}"
 
@@ -679,24 +625,20 @@ def validate_system_registry(registry_path: Optional[Path] = None) -> List[str]:
     if error:
         return [error]
 
-    # Check required top-level keys
     for key in SYSTEM_REGISTRY_SCHEMA["required_keys"]:
         if key not in data:
             errors.append(f"System registry missing required key: '{key}'")
 
-    # Check paths section
     if "paths" in data:
         for path_key in SYSTEM_REGISTRY_SCHEMA["paths_required"]:
             if path_key not in data["paths"]:
                 errors.append(f"System registry paths missing: '{path_key}'")
 
-    # Check registries section
     if "registries" in data:
         for reg_key in SYSTEM_REGISTRY_SCHEMA["registries_required"]:
             if reg_key not in data["registries"]:
                 errors.append(f"System registry registries missing: '{reg_key}'")
             else:
-                # Verify the referenced registry file exists
                 ref_path = _get_project_root() / data["registries"][reg_key]
                 if not ref_path.exists():
                     errors.append(
@@ -711,25 +653,14 @@ def validate_system_registry(registry_path: Optional[Path] = None) -> List[str]:
 # =============================================================================
 
 def validate_market_entry(ticker: str, entry: Dict[str, Any]) -> List[str]:
-    """
-    Validate a single market registry entry.
-
-    Args:
-        ticker: The ticker symbol
-        entry: The entry configuration dict
-
-    Returns:
-        List of validation error messages
-    """
+    """Validate a single market registry entry."""
     errors = []
     prefix = f"Market '{ticker}'"
 
-    # Check required keys
     for key in MARKET_ENTRY_SCHEMA["required_keys"]:
         if key not in entry:
             errors.append(f"{prefix}: missing required key '{key}'")
 
-    # Validate fetch_type
     if "fetch_type" in entry:
         if entry["fetch_type"] not in MARKET_ENTRY_SCHEMA["valid_fetch_types"]:
             errors.append(
@@ -737,7 +668,6 @@ def validate_market_entry(ticker: str, entry: Dict[str, Any]) -> List[str]:
                 f"Valid: {MARKET_ENTRY_SCHEMA['valid_fetch_types']}"
             )
 
-    # Validate frequency
     if "frequency" in entry:
         if entry["frequency"] not in MARKET_ENTRY_SCHEMA["valid_frequencies"]:
             errors.append(
@@ -745,11 +675,9 @@ def validate_market_entry(ticker: str, entry: Dict[str, Any]) -> List[str]:
                 f"Valid: {MARKET_ENTRY_SCHEMA['valid_frequencies']}"
             )
 
-    # Validate enabled is boolean
     if "enabled" in entry and not isinstance(entry["enabled"], bool):
         errors.append(f"{prefix}: 'enabled' must be boolean")
 
-    # Validate tables structure
     if "tables" in entry:
         if not isinstance(entry["tables"], dict):
             errors.append(f"{prefix}: 'tables' must be a dictionary")
@@ -766,7 +694,6 @@ def validate_market_entry(ticker: str, entry: Dict[str, Any]) -> List[str]:
                         "Must be valid SQL identifier."
                     )
 
-    # Validate use_column
     if "use_column" in entry:
         if not _is_valid_sql_identifier(entry["use_column"]):
             errors.append(
@@ -778,15 +705,7 @@ def validate_market_entry(ticker: str, entry: Dict[str, Any]) -> List[str]:
 
 
 def validate_market_registry(registry_path: Optional[Path] = None) -> List[str]:
-    """
-    Validate the complete market registry.
-
-    Args:
-        registry_path: Optional custom path. Uses default if None.
-
-    Returns:
-        List of validation error messages. Empty if valid.
-    """
+    """Validate the complete market registry."""
     errors = []
 
     if registry_path is None:
@@ -811,25 +730,14 @@ def validate_market_registry(registry_path: Optional[Path] = None) -> List[str]:
 # =============================================================================
 
 def validate_economic_entry(series_id: str, entry: Dict[str, Any]) -> List[str]:
-    """
-    Validate a single economic registry entry.
-
-    Args:
-        series_id: The economic series identifier
-        entry: The entry configuration dict
-
-    Returns:
-        List of validation error messages
-    """
+    """Validate a single economic registry entry."""
     errors = []
     prefix = f"Economic '{series_id}'"
 
-    # Check required keys
     for key in ECONOMIC_ENTRY_SCHEMA["required_keys"]:
         if key not in entry:
             errors.append(f"{prefix}: missing required key '{key}'")
 
-    # Validate fetch_type
     if "fetch_type" in entry:
         if entry["fetch_type"] not in ECONOMIC_ENTRY_SCHEMA["valid_fetch_types"]:
             errors.append(
@@ -837,7 +745,6 @@ def validate_economic_entry(series_id: str, entry: Dict[str, Any]) -> List[str]:
                 f"Valid: {ECONOMIC_ENTRY_SCHEMA['valid_fetch_types']}"
             )
 
-    # Validate frequency
     if "frequency" in entry:
         if entry["frequency"] not in ECONOMIC_ENTRY_SCHEMA["valid_frequencies"]:
             errors.append(
@@ -845,11 +752,9 @@ def validate_economic_entry(series_id: str, entry: Dict[str, Any]) -> List[str]:
                 f"Valid: {ECONOMIC_ENTRY_SCHEMA['valid_frequencies']}"
             )
 
-    # Validate enabled is boolean
     if "enabled" in entry and not isinstance(entry["enabled"], bool):
         errors.append(f"{prefix}: 'enabled' must be boolean")
 
-    # Validate table name
     if "table" in entry:
         if not _is_valid_sql_identifier(entry["table"]):
             errors.append(
@@ -857,7 +762,6 @@ def validate_economic_entry(series_id: str, entry: Dict[str, Any]) -> List[str]:
                 "Must be valid SQL identifier."
             )
 
-    # Validate use_column
     if "use_column" in entry:
         if not _is_valid_sql_identifier(entry["use_column"]):
             errors.append(
@@ -865,19 +769,16 @@ def validate_economic_entry(series_id: str, entry: Dict[str, Any]) -> List[str]:
                 "Must be valid SQL identifier."
             )
 
-    # Validate code matches series_id (for FRED)
     if "code" in entry and entry.get("fetch_type") == "fred":
         if entry["code"] != series_id:
             errors.append(
                 f"{prefix}: FRED code '{entry['code']}' should match series_id"
             )
 
-    # Validate transformations is a list
     if "transformations" in entry:
         if not isinstance(entry["transformations"], list):
             errors.append(f"{prefix}: 'transformations' must be a list")
 
-    # Validate revision_tracking is boolean
     if "revision_tracking" in entry:
         if not isinstance(entry["revision_tracking"], bool):
             errors.append(f"{prefix}: 'revision_tracking' must be boolean")
@@ -886,15 +787,7 @@ def validate_economic_entry(series_id: str, entry: Dict[str, Any]) -> List[str]:
 
 
 def validate_economic_registry(registry_path: Optional[Path] = None) -> List[str]:
-    """
-    Validate the complete economic registry.
-
-    Args:
-        registry_path: Optional custom path. Uses default if None.
-
-    Returns:
-        List of validation error messages. Empty if valid.
-    """
+    """Validate the complete economic registry."""
     errors = []
 
     if registry_path is None:
@@ -919,13 +812,7 @@ def validate_economic_registry(registry_path: Optional[Path] = None) -> List[str
 # =============================================================================
 
 def validate_all_registries() -> Dict[str, List[str]]:
-    """
-    Validate all registries and return results.
-
-    Returns:
-        Dict mapping registry name to list of errors.
-        Empty lists indicate valid registries.
-    """
+    """Validate all registries and return results."""
     return {
         "system": validate_system_registry(),
         "market": validate_market_registry(),
@@ -934,12 +821,7 @@ def validate_all_registries() -> Dict[str, List[str]]:
 
 
 def registries_are_valid() -> Tuple[bool, Dict[str, List[str]]]:
-    """
-    Check if all registries are valid.
-
-    Returns:
-        Tuple of (is_valid, errors_dict)
-    """
+    """Check if all registries are valid."""
     errors = validate_all_registries()
     is_valid = all(len(errs) == 0 for errs in errors.values())
     return is_valid, errors
@@ -961,7 +843,7 @@ def load_validated_registry(registry_type: str) -> dict:
 
     Raises:
         ValueError: If validation fails
-        FileNotFoundError: If registry file doesn't exist
+        FileNotFoundError: If registry file does not exist
     """
     registry_paths = {
         "system": _get_project_root() / "data_fetch" / "system_registry.json",
@@ -977,7 +859,6 @@ def load_validated_registry(registry_type: str) -> dict:
 
     path = registry_paths[registry_type]
 
-    # Validate
     validators = {
         "system": validate_system_registry,
         "market": validate_market_registry,
@@ -991,7 +872,6 @@ def load_validated_registry(registry_type: str) -> dict:
             "\n".join(f"  - {e}" for e in errors)
         )
 
-    # Load and return
     with open(path, "r") as f:
         return json.load(f)
 

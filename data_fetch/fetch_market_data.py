@@ -304,7 +304,7 @@ def fetch_single_market_instrument(
 
     try:
         # Use existing Yahoo fetcher
-        from prism_engine.fetch.fetcher_yahoo import YahooFetcher
+        from fetch.fetcher_yahoo import YahooFetcher
 
         fetcher = YahooFetcher()
         df = fetcher.fetch_single(ticker, start_date=start_date, end_date=end_date)
@@ -313,7 +313,7 @@ def fetch_single_market_instrument(
         # Fallback: try the 01_fetch path
         try:
             sys.path.insert(0, str(Path(__file__).parent.parent / "01_fetch"))
-            from fetcher_yahoo import YahooFetcher
+            from fetch.fetcher_yahoo import YahooFetcher
 
             fetcher = YahooFetcher()
             df = fetcher.fetch_single(ticker, start_date=start_date, end_date=end_date)
@@ -415,23 +415,20 @@ def fetch_all_market_data(
     # Write to database if requested
     if write_to_db and results["data"]:
         try:
-            from data.sql.prism_db import write_dataframe, init_db
+            from utils.db_connector import upsert_market_prices, init_database
 
-            init_db()
+            init_database()
 
             for key, df in results["data"].items():
-                # Prepare data for DB
+                # Prepare data for DB - need ticker, date, and price columns
                 db_df = df[["date", "price"]].copy()
-                db_df.columns = ["date", "value"]
-
-                write_dataframe(
-                    db_df,
-                    indicator_name=key,
-                    system="finance",
-                    frequency="daily",
-                    source="yahoo",
-                )
-                logger.info(f"  -> Wrote {key} to database")
+                db_df["ticker"] = key
+                db_df = db_df.rename(columns={"price": "close"})
+                
+                # upsert_market_prices expects: ticker, date, field, value
+                # It will melt wide columns into long format
+                upsert_market_prices(None, db_df)
+                logger.info(f"  -> Wrote {key} to database ({len(db_df)} rows)")
 
         except Exception as e:
             logger.error(f"Database write failed: {e}")

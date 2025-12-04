@@ -338,7 +338,7 @@ def fetch_single_economic_series(
 
     try:
         # Use existing FRED fetcher
-        from prism_engine.fetch.fetcher_fred import FREDFetcher
+        from fetch.fetcher_fred import FREDFetcher
 
         fetcher = FREDFetcher()
         df = fetcher.fetch_single(ticker, start_date=start_date, end_date=end_date)
@@ -347,7 +347,7 @@ def fetch_single_economic_series(
         # Fallback: try the 01_fetch path
         try:
             sys.path.insert(0, str(Path(__file__).parent.parent / "01_fetch"))
-            from fetcher_fred import FREDFetcher
+            from fetch.fetcher_fred import FREDFetcher
 
             fetcher = FREDFetcher()
             df = fetcher.fetch_single(ticker, start_date=start_date, end_date=end_date)
@@ -459,32 +459,19 @@ def fetch_all_economic_data(
     # Write to database if requested
     if write_to_db and results["data"]:
         try:
-            from data.sql.prism_db import write_dataframe, init_db
+            from utils.db_connector import upsert_econ_values, init_database
 
-            init_db()
+            init_database()
 
             for key, df in results["data"].items():
-                # Prepare data for DB
+                # Prepare data for DB - need series_id, date, value columns
                 db_df = df[["date", "value_raw"]].copy()
-                db_df.columns = ["date", "value"]
-
-                # Get frequency from registry
-                series_config = next(
-                    (s for s in enabled if s.get("key") == key),
-                    {}
-                )
-                frequency = series_config.get("frequency", "monthly")
-                units = series_config.get("units", "")
-
-                write_dataframe(
-                    db_df,
-                    indicator_name=key,
-                    system="finance",
-                    frequency=frequency,
-                    source="fred",
-                    units=units,
-                )
-                logger.info(f"  -> Wrote {key} to database")
+                db_df = db_df.rename(columns={"value_raw": "value"})
+                db_df["series_id"] = key
+                
+                # upsert_econ_values expects: series_id, date, value
+                upsert_econ_values(None, db_df)
+                logger.info(f"  -> Wrote {key} to database ({len(db_df)} rows)")
 
         except Exception as e:
             logger.error(f"Database write failed: {e}")
