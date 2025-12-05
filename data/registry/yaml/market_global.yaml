@@ -1,0 +1,453 @@
+version: 2.0.0
+generated: '2025-12-05'
+title: Market Global Registry
+description: U.S. and global equity indices, sectors, country ETFs, and factor exposures
+indicators:
+- id: spy
+  name: S&P 500 ETF
+  source: yahoo
+  group: us_equity_index
+  frequency: daily
+  params:
+    ticker: SPY
+  asset_class: equity
+- id: qqq
+  name: NASDAQ 100 ETF
+  source: yahoo
+  group: us_equity_index
+  frequency: daily
+  params:
+    ticker: QQQ
+  asset_class: equity
+- id: dia
+  name: Dow Jones ETF
+  source: yahoo
+  group: us_equity_index
+  frequency: daily
+  params:
+    ticker: DIA
+  asset_class: equity
+- id: iwm
+  name: Russell 2000 ETF
+  source: yahoo
+  group: us_equity_index
+  frequency: daily
+  params:
+    ticker: IWM
+  asset_class: equity
+- id: mdy
+  name: S&P MidCap 400 ETF
+  source: yahoo
+  group: us_equity_index
+  frequency: daily
+  params:
+    ticker: MDY
+  asset_class: equity
+- id: ijh
+  name: S&P MidCap 400 iShares
+  source: yahoo
+  group: us_equity_index
+  frequency: daily
+  params:
+    ticker: IJH
+  asset_class: equity
+- id: sly
+  name: S&P SmallCap 600 ETF
+  source: yahoo
+  group: us_equity_index
+  frequency: daily
+  params:
+    ticker: SLY
+  asset_class: equity
+- id: spx_index
+  name: S&P 500 Index
+  source: yahoo
+  group: us_equity_index
+  frequency: daily
+  params:
+    ticker: ^GSPC
+  asset_class: equity
+- id: ndx_index
+  name: NASDAQ 100 Index
+  source: yahoo
+  group: us_equity_index
+  frequency: daily
+  params:
+    ticker: ^NDX
+  asset_class: equity
+- id: dji_index
+  name: Dow Jones Industrial
+  source: yahoo
+  group: us_equity_index
+  frequency: daily
+  params:
+    ticker: ^DJI
+  asset_class: equity
+- id: rut_index
+  name: Russell 2000 Index
+  source: yahoo
+  group: us_equity_index
+  frequency: daily
+  params:
+    ticker: ^RUT
+  asset_class: equity
+- id: ftse_100
+  name: FTSE 100 Index
+  source: yahoo
+  group: global_equity_index
+  frequency: daily
+  params:
+    ticker: ^FTSE
+  asset_class: equity
+- id: dax
+  name: DAX Index
+  source: yahoo
+  group: global_equity_index
+  frequency: daily
+  params:
+    ticker: ^GDAXI
+  asset_class: equity
+- id: cac_40
+  name: CAC 40 Index
+  source: yahoo
+  group: global_equity_index
+  frequency: daily
+  params:
+    ticker: ^FCHI
+  asset_class: equity
+- id: nikkei_225
+  name: Nikkei 225 Index
+  source: yahoo
+  group: global_equity_index
+  frequency: daily
+  params:
+    ticker: ^N225
+  asset_class: equity
+- id: hang_seng
+  name: Hang Seng Index
+  source: yahoo
+  group: global_equity_index
+  frequency: daily
+  params:
+    ticker: ^HSI
+  asset_class: equity
+- id: shanghai_comp
+  name: Shanghai Composite
+  source: yahoo
+  group: global_equity_index
+  frequency: daily
+  params:
+    ticker: 000001.SS
+  asset_class: equity
+- id: stoxx_600
+  name: STOXX Europe 600
+  source: yahoo
+  group: global_equity_index
+  frequency: daily
+  params:
+    ticker: ^STOXX
+  asset_class: equity
+- id: asx_200
+  name: ASX 200 Index
+  source: yahoo
+  group: global_equity_index
+  frequency: daily
+  params:
+    ticker: ^AXJO
+  asset_class: equity
+- id: tsx_comp
+  name: TSX Composite
+  source: yahoo
+  group: global_equity_index
+  frequency: daily
+  params:
+    ticker: ^GSPTSE
+  asset_class: equity
+- id: bovespa
+  name: Bovespa Index
+  source: yahoo
+  group: global_equity_index
+  frequency: daily
+  params:
+    ticker: ^BVSP
+  asset_class: equity
+- id: kospi
+  name: KOSPI Index
+  source: yahoo
+  group: global_equity_index
+  frequency: daily
+  params:
+    ticker: ^KS11
+  asset_class: equity
+- id: sensex
+  name: BSE Sensex
+  source: yahoo
+  group: global_equity_index
+  frequency: daily
+  params:
+    ticker: ^BSESN
+  asset_class: equity
+- id: nifty_50
+  name: NIFTY 50 Index
+  source: yahoo
+  group: global_equity_index
+  frequency: daily
+  params:
+    ticker: ^NSEI
+  asset_class: equity
+- id: acwi
+  name: MSCI ACWI ETF
+  source: yahoo
+  group: msci_index
+  frequency: daily
+  params:
+    ticker: ACWI
+  asset_class: equity
+- id: efa
+  name: MSCI EAFE ETF
+  source: yahoo
+  group: msci_index
+  frequency: daily
+  params:
+    ticker: EFA
+  asset_class: equity
+- id: eem
+  name: MSCI Emerging Markets ETF
+  source: yahoo
+  group: msci_index
+  frequency: daily
+  params:
+    ticker: EEM
+  asset_class: equity
+- id: vea
+  name: Developed Markets ETF
+  source: yahoo
+  group: msci_index
+  frequency: daily
+  params:
+    ticker: VEA
+  asset_class: equity
+- id: vwo
+  name: Emerging Markets ETF
+  source: yahoo
+  group: msci_index
+  frequency: daily
+  params:
+    ticker: VWO
+  asset_class: equity
+- id: iemg
+  name: Core EM ETF
+  source: yahoo
+  group: msci_index
+  frequency: daily
+  params:
+    ticker: IEMG
+  asset_class: equity
+- id: ewj
+  name: Japan ETF
+  source: yahoo
+  group: country_equity
+  frequency: daily
+  params:
+    ticker: EWJ
+  asset_class: equity
+- id: ewg
+  name: Germany ETF
+  source: yahoo
+  group: country_equity
+  frequency: daily
+  params:
+    ticker: EWG
+  asset_class: equity
+- id: ewu
+  name: UK ETF
+  source: yahoo
+  group: country_equity
+  frequency: daily
+  params:
+    ticker: EWU
+  asset_class: equity
+- id: fxi
+  name: China Large-Cap ETF
+  source: yahoo
+  group: country_equity
+  frequency: daily
+  params:
+    ticker: FXI
+  asset_class: equity
+- id: ewz
+  name: Brazil ETF
+  source: yahoo
+  group: country_equity
+  frequency: daily
+  params:
+    ticker: EWZ
+  asset_class: equity
+- id: inda
+  name: India ETF
+  source: yahoo
+  group: country_equity
+  frequency: daily
+  params:
+    ticker: INDA
+  asset_class: equity
+- id: ewy
+  name: South Korea ETF
+  source: yahoo
+  group: country_equity
+  frequency: daily
+  params:
+    ticker: EWY
+  asset_class: equity
+- id: ewc
+  name: Canada ETF
+  source: yahoo
+  group: country_equity
+  frequency: daily
+  params:
+    ticker: EWC
+  asset_class: equity
+- id: ewa
+  name: Australia ETF
+  source: yahoo
+  group: country_equity
+  frequency: daily
+  params:
+    ticker: EWA
+  asset_class: equity
+- id: fez
+  name: Euro Stoxx 50 ETF
+  source: yahoo
+  group: country_equity
+  frequency: daily
+  params:
+    ticker: FEZ
+  asset_class: equity
+- id: xlk
+  name: Technology Sector
+  source: yahoo
+  group: us_sector
+  frequency: daily
+  params:
+    ticker: XLK
+  asset_class: equity
+- id: xlf
+  name: Financial Sector
+  source: yahoo
+  group: us_sector
+  frequency: daily
+  params:
+    ticker: XLF
+  asset_class: equity
+- id: xle
+  name: Energy Sector
+  source: yahoo
+  group: us_sector
+  frequency: daily
+  params:
+    ticker: XLE
+  asset_class: equity
+- id: xlv
+  name: Health Care Sector
+  source: yahoo
+  group: us_sector
+  frequency: daily
+  params:
+    ticker: XLV
+  asset_class: equity
+- id: xli
+  name: Industrial Sector
+  source: yahoo
+  group: us_sector
+  frequency: daily
+  params:
+    ticker: XLI
+  asset_class: equity
+- id: xly
+  name: Consumer Discretionary
+  source: yahoo
+  group: us_sector
+  frequency: daily
+  params:
+    ticker: XLY
+  asset_class: equity
+- id: xlp
+  name: Consumer Staples
+  source: yahoo
+  group: us_sector
+  frequency: daily
+  params:
+    ticker: XLP
+  asset_class: equity
+- id: xlb
+  name: Materials Sector
+  source: yahoo
+  group: us_sector
+  frequency: daily
+  params:
+    ticker: XLB
+  asset_class: equity
+- id: xlu
+  name: Utilities Sector
+  source: yahoo
+  group: us_sector
+  frequency: daily
+  params:
+    ticker: XLU
+  asset_class: equity
+- id: xlre
+  name: Real Estate Sector
+  source: yahoo
+  group: us_sector
+  frequency: daily
+  params:
+    ticker: XLRE
+  asset_class: equity
+- id: xlc
+  name: Communication Services
+  source: yahoo
+  group: us_sector
+  frequency: daily
+  params:
+    ticker: XLC
+  asset_class: equity
+- id: mtum
+  name: Momentum Factor ETF
+  source: yahoo
+  group: factor
+  frequency: daily
+  params:
+    ticker: MTUM
+  asset_class: equity
+- id: vlue
+  name: Value Factor ETF
+  source: yahoo
+  group: factor
+  frequency: daily
+  params:
+    ticker: VLUE
+  asset_class: equity
+- id: qual
+  name: Quality Factor ETF
+  source: yahoo
+  group: factor
+  frequency: daily
+  params:
+    ticker: QUAL
+  asset_class: equity
+- id: usmv
+  name: Min Volatility ETF
+  source: yahoo
+  group: factor
+  frequency: daily
+  params:
+    ticker: USMV
+  asset_class: equity
+- id: size
+  name: Size Factor ETF
+  source: yahoo
+  group: factor
+  frequency: daily
+  params:
+    ticker: SIZE
+  asset_class: equity

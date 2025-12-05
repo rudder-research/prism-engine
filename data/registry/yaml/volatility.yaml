@@ -1,0 +1,125 @@
+version: 2.0.0
+generated: '2025-12-05'
+title: Volatility Registry
+description: VIX family (9D, 3M, 6M), sector vol, MOVE index, and volatility ETFs
+indicators:
+- id: vix
+  name: CBOE VIX Index
+  source: yahoo
+  group: equity_vol
+  frequency: daily
+  params:
+    ticker: ^VIX
+  asset_class: volatility
+- id: vix9d
+  name: CBOE 9-Day VIX
+  source: yahoo
+  group: equity_vol
+  frequency: daily
+  params:
+    ticker: ^VIX9D
+  asset_class: volatility
+- id: vix3m
+  name: CBOE 3-Month VIX
+  source: yahoo
+  group: equity_vol
+  frequency: daily
+  params:
+    ticker: ^VIX3M
+  asset_class: volatility
+- id: vix6m
+  name: CBOE 6-Month VIX
+  source: yahoo
+  group: equity_vol
+  frequency: daily
+  params:
+    ticker: ^VIX6M
+  asset_class: volatility
+- id: vxn
+  name: CBOE NASDAQ Volatility
+  source: yahoo
+  group: equity_vol
+  frequency: daily
+  params:
+    ticker: ^VXN
+  asset_class: volatility
+- id: rvx
+  name: CBOE Russell 2000 Vol
+  source: yahoo
+  group: equity_vol
+  frequency: daily
+  params:
+    ticker: ^RVX
+  asset_class: volatility
+- id: vxd
+  name: CBOE DJIA Volatility
+  source: yahoo
+  group: equity_vol
+  frequency: daily
+  params:
+    ticker: ^VXD
+  asset_class: volatility
+- id: move
+  name: ICE BofA MOVE Index
+  source: fred
+  group: rate_vol
+  frequency: daily
+  params:
+    series_id: MOVEIDX
+  category: volatility
+- id: vixy
+  name: VIX Short-Term Futures ETF
+  source: yahoo
+  group: vol_etf
+  frequency: daily
+  params:
+    ticker: VIXY
+  asset_class: volatility
+- id: vixm
+  name: VIX Mid-Term Futures ETF
+  source: yahoo
+  group: vol_etf
+  frequency: daily
+  params:
+    ticker: VIXM
+  asset_class: volatility
+- id: svxy
+  name: Short VIX Futures ETF
+  source: yahoo
+  group: vol_etf
+  frequency: daily
+  params:
+    ticker: SVXY
+  asset_class: volatility
+- id: uvxy
+  name: Ultra VIX Short-Term ETF
+  source: yahoo
+  group: vol_etf
+  frequency: daily
+  params:
+    ticker: UVXY
+  asset_class: volatility
+- id: evz
+  name: Euro Currency Vol
+  source: yahoo
+  group: fx_vol
+  frequency: daily
+  params:
+    ticker: ^EVZ
+  asset_class: volatility
+- id: ovx
+  name: CBOE Crude Oil Vol
+  source: yahoo
+  group: commodity_vol
+  frequency: daily
+  params:
+    ticker: ^OVX
+  asset_class: volatility
+- id: gvz
+  name: CBOE Gold Vol
+  source: yahoo
+  group: commodity_vol
+  frequency: daily
+  params:
+    ticker: ^GVZ
+  asset_class: volatility

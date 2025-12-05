@@ -1,0 +1,101 @@
+version: 2.0.0
+generated: '2025-12-05'
+title: Global Economics Registry
+description: CPI, unemployment, and GDP for Eurozone, UK, Japan, China, Canada
+indicators:
+- id: eu_cpi
+  name: Eurozone HICP
+  source: fred
+  group: eu_economic
+  frequency: monthly
+  params:
+    series_id: CP0000EZ19M086NEST
+  category: inflation
+- id: eu_unemployment
+  name: Eurozone Unemployment
+  source: fred
+  group: eu_economic
+  frequency: monthly
+  params:
+    series_id: LRHUTTTTEZM156S
+  category: labor
+- id: eu_gdp
+  name: Eurozone Real GDP
+  source: fred
+  group: eu_economic
+  frequency: quarterly
+  params:
+    series_id: CLVMEURSCAB1GQEA19
+  category: output
+- id: uk_cpi
+  name: UK CPI
+  source: fred
+  group: uk_economic
+  frequency: monthly
+  params:
+    series_id: CPALTT01GBM659N
+  category: inflation
+- id: uk_unemployment
+  name: UK Unemployment
+  source: fred
+  group: uk_economic
+  frequency: monthly
+  params:
+    series_id: LRHUTTTTGBM156S
+  category: labor
+- id: jp_cpi
+  name: Japan CPI
+  source: fred
+  group: jp_economic
+  frequency: monthly
+  params:
+    series_id: JPNCPIALLMINMEI
+  category: inflation
+- id: jp_unemployment
+  name: Japan Unemployment
+  source: fred
+  group: jp_economic
+  frequency: monthly
+  params:
+    series_id: LRHUTTTTJPM156S
+  category: labor
+- id: cn_cpi
+  name: China CPI
+  source: fred
+  group: cn_economic
+  frequency: monthly
+  params:
+    series_id: CHNCPIALLMINMEI
+  category: inflation
+- id: cn_ppi
+  name: China PPI
+  source: fred
+  group: cn_economic
+  frequency: monthly
+  params:
+    series_id: CHNPIEAMP01GYM
+  category: inflation
+- id: ca_cpi
+  name: Canada CPI
+  source: fred
+  group: ca_economic
+  frequency: monthly
+  params:
+    series_id: CPALCY01CAM661N
+  category: inflation
+- id: ca_unemployment
+  name: Canada Unemployment
+  source: fred
+  group: ca_economic
+  frequency: monthly
+  params:
+    series_id: LRUNTTTTCAM156S
+  category: labor
+- id: wld_trade
+  name: World Trade Volume
+  source: fred
+  group: global_trade
+  frequency: monthly
+  params:
+    series_id: WDXTEXVA01IXOBM
+  category: external

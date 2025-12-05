@@ -1,0 +1,992 @@
+version: 2.0.0
+generated: '2025-12-05'
+title: Technical Indicators Registry
+description: MACD, RSI, SMA, EMA, Bollinger Bands, volatility, momentum - auto-applied
+  by group
+auto_apply_rules:
+  groups_to_apply:
+  - us_equity_index
+  - global_equity_index
+  - msci_index
+  - us_sector
+  - factor
+  - fx_major
+  - fx_index
+  - precious_metals
+  - energy
+  - commodity_etf
+  indicators:
+  - type: macd
+    params:
+      fast: 12
+      slow: 26
+      signal: 9
+  - type: rsi
+    params:
+      window: 14
+  - type: sma
+    params:
+      window: 50
+    suffix: sma50
+  - type: sma
+    params:
+      window: 100
+    suffix: sma100
+  - type: sma
+    params:
+      window: 200
+    suffix: sma200
+  - type: ema
+    params:
+      window: 21
+    suffix: ema21
+  - type: bollinger_upper
+    params:
+      window: 20
+      std_dev: 2
+    suffix: bb_upper
+  - type: bollinger_lower
+    params:
+      window: 20
+      std_dev: 2
+    suffix: bb_lower
+  - type: volatility
+    params:
+      window: 20
+    suffix: vol20
+  - type: volatility
+    params:
+      window: 60
+    suffix: vol60
+  - type: momentum
+    params:
+      window: 21
+    suffix: mom1m
+  - type: momentum
+    params:
+      window: 63
+    suffix: mom3m
+  - type: momentum
+    params:
+      window: 126
+    suffix: mom6m
+  - type: momentum
+    params:
+      window: 252
+    suffix: mom12m
+  zscore:
+    windows:
+    - 20
+    - 60
+    - 126
+indicators:
+- id: spy_macd
+  name: SPY MACD
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: spy
+    type: macd
+    fast: 12
+    slow: 26
+    signal: 9
+- id: spy_rsi
+  name: SPY RSI
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: spy
+    type: rsi
+    window: 14
+- id: spy_sma50
+  name: SPY SMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: spy
+    type: sma
+    window: 50
+- id: spy_sma100
+  name: SPY SMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: spy
+    type: sma
+    window: 100
+- id: spy_sma200
+  name: SPY SMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: spy
+    type: sma
+    window: 200
+- id: spy_ema21
+  name: SPY EMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: spy
+    type: ema
+    window: 21
+- id: spy_bb_upper
+  name: SPY BOLLINGER_UPPER
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: spy
+    type: bollinger_upper
+    window: 20
+    std_dev: 2
+- id: spy_bb_lower
+  name: SPY BOLLINGER_LOWER
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: spy
+    type: bollinger_lower
+    window: 20
+    std_dev: 2
+- id: spy_vol20
+  name: SPY VOLATILITY
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: spy
+    type: volatility
+    window: 20
+- id: spy_vol60
+  name: SPY VOLATILITY
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: spy
+    type: volatility
+    window: 60
+- id: spy_mom1m
+  name: SPY MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: spy
+    type: momentum
+    window: 21
+- id: spy_mom3m
+  name: SPY MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: spy
+    type: momentum
+    window: 63
+- id: spy_mom6m
+  name: SPY MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: spy
+    type: momentum
+    window: 126
+- id: spy_mom12m
+  name: SPY MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: spy
+    type: momentum
+    window: 252
+- id: qqq_macd
+  name: QQQ MACD
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: qqq
+    type: macd
+    fast: 12
+    slow: 26
+    signal: 9
+- id: qqq_rsi
+  name: QQQ RSI
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: qqq
+    type: rsi
+    window: 14
+- id: qqq_sma50
+  name: QQQ SMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: qqq
+    type: sma
+    window: 50
+- id: qqq_sma100
+  name: QQQ SMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: qqq
+    type: sma
+    window: 100
+- id: qqq_sma200
+  name: QQQ SMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: qqq
+    type: sma
+    window: 200
+- id: qqq_ema21
+  name: QQQ EMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: qqq
+    type: ema
+    window: 21
+- id: qqq_bb_upper
+  name: QQQ BOLLINGER_UPPER
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: qqq
+    type: bollinger_upper
+    window: 20
+    std_dev: 2
+- id: qqq_bb_lower
+  name: QQQ BOLLINGER_LOWER
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: qqq
+    type: bollinger_lower
+    window: 20
+    std_dev: 2
+- id: qqq_vol20
+  name: QQQ VOLATILITY
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: qqq
+    type: volatility
+    window: 20
+- id: qqq_vol60
+  name: QQQ VOLATILITY
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: qqq
+    type: volatility
+    window: 60
+- id: qqq_mom1m
+  name: QQQ MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: qqq
+    type: momentum
+    window: 21
+- id: qqq_mom3m
+  name: QQQ MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: qqq
+    type: momentum
+    window: 63
+- id: qqq_mom6m
+  name: QQQ MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: qqq
+    type: momentum
+    window: 126
+- id: qqq_mom12m
+  name: QQQ MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: qqq
+    type: momentum
+    window: 252
+- id: iwm_macd
+  name: IWM MACD
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: iwm
+    type: macd
+    fast: 12
+    slow: 26
+    signal: 9
+- id: iwm_rsi
+  name: IWM RSI
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: iwm
+    type: rsi
+    window: 14
+- id: iwm_sma50
+  name: IWM SMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: iwm
+    type: sma
+    window: 50
+- id: iwm_sma100
+  name: IWM SMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: iwm
+    type: sma
+    window: 100
+- id: iwm_sma200
+  name: IWM SMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: iwm
+    type: sma
+    window: 200
+- id: iwm_ema21
+  name: IWM EMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: iwm
+    type: ema
+    window: 21
+- id: iwm_bb_upper
+  name: IWM BOLLINGER_UPPER
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: iwm
+    type: bollinger_upper
+    window: 20
+    std_dev: 2
+- id: iwm_bb_lower
+  name: IWM BOLLINGER_LOWER
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: iwm
+    type: bollinger_lower
+    window: 20
+    std_dev: 2
+- id: iwm_vol20
+  name: IWM VOLATILITY
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: iwm
+    type: volatility
+    window: 20
+- id: iwm_vol60
+  name: IWM VOLATILITY
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: iwm
+    type: volatility
+    window: 60
+- id: iwm_mom1m
+  name: IWM MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: iwm
+    type: momentum
+    window: 21
+- id: iwm_mom3m
+  name: IWM MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: iwm
+    type: momentum
+    window: 63
+- id: iwm_mom6m
+  name: IWM MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: iwm
+    type: momentum
+    window: 126
+- id: iwm_mom12m
+  name: IWM MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: iwm
+    type: momentum
+    window: 252
+- id: dxy_macd
+  name: DXY MACD
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: dxy
+    type: macd
+    fast: 12
+    slow: 26
+    signal: 9
+- id: dxy_rsi
+  name: DXY RSI
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: dxy
+    type: rsi
+    window: 14
+- id: dxy_sma50
+  name: DXY SMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: dxy
+    type: sma
+    window: 50
+- id: dxy_sma100
+  name: DXY SMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: dxy
+    type: sma
+    window: 100
+- id: dxy_sma200
+  name: DXY SMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: dxy
+    type: sma
+    window: 200
+- id: dxy_ema21
+  name: DXY EMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: dxy
+    type: ema
+    window: 21
+- id: dxy_bb_upper
+  name: DXY BOLLINGER_UPPER
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: dxy
+    type: bollinger_upper
+    window: 20
+    std_dev: 2
+- id: dxy_bb_lower
+  name: DXY BOLLINGER_LOWER
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: dxy
+    type: bollinger_lower
+    window: 20
+    std_dev: 2
+- id: dxy_vol20
+  name: DXY VOLATILITY
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: dxy
+    type: volatility
+    window: 20
+- id: dxy_vol60
+  name: DXY VOLATILITY
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: dxy
+    type: volatility
+    window: 60
+- id: dxy_mom1m
+  name: DXY MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: dxy
+    type: momentum
+    window: 21
+- id: dxy_mom3m
+  name: DXY MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: dxy
+    type: momentum
+    window: 63
+- id: dxy_mom6m
+  name: DXY MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: dxy
+    type: momentum
+    window: 126
+- id: dxy_mom12m
+  name: DXY MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: dxy
+    type: momentum
+    window: 252
+- id: gc_f_macd
+  name: GC_F MACD
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: gc_f
+    type: macd
+    fast: 12
+    slow: 26
+    signal: 9
+- id: gc_f_rsi
+  name: GC_F RSI
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: gc_f
+    type: rsi
+    window: 14
+- id: gc_f_sma50
+  name: GC_F SMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: gc_f
+    type: sma
+    window: 50
+- id: gc_f_sma100
+  name: GC_F SMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: gc_f
+    type: sma
+    window: 100
+- id: gc_f_sma200
+  name: GC_F SMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: gc_f
+    type: sma
+    window: 200
+- id: gc_f_ema21
+  name: GC_F EMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: gc_f
+    type: ema
+    window: 21
+- id: gc_f_bb_upper
+  name: GC_F BOLLINGER_UPPER
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: gc_f
+    type: bollinger_upper
+    window: 20
+    std_dev: 2
+- id: gc_f_bb_lower
+  name: GC_F BOLLINGER_LOWER
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: gc_f
+    type: bollinger_lower
+    window: 20
+    std_dev: 2
+- id: gc_f_vol20
+  name: GC_F VOLATILITY
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: gc_f
+    type: volatility
+    window: 20
+- id: gc_f_vol60
+  name: GC_F VOLATILITY
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: gc_f
+    type: volatility
+    window: 60
+- id: gc_f_mom1m
+  name: GC_F MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: gc_f
+    type: momentum
+    window: 21
+- id: gc_f_mom3m
+  name: GC_F MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: gc_f
+    type: momentum
+    window: 63
+- id: gc_f_mom6m
+  name: GC_F MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: gc_f
+    type: momentum
+    window: 126
+- id: gc_f_mom12m
+  name: GC_F MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: gc_f
+    type: momentum
+    window: 252
+- id: cl_f_macd
+  name: CL_F MACD
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: cl_f
+    type: macd
+    fast: 12
+    slow: 26
+    signal: 9
+- id: cl_f_rsi
+  name: CL_F RSI
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: cl_f
+    type: rsi
+    window: 14
+- id: cl_f_sma50
+  name: CL_F SMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: cl_f
+    type: sma
+    window: 50
+- id: cl_f_sma100
+  name: CL_F SMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: cl_f
+    type: sma
+    window: 100
+- id: cl_f_sma200
+  name: CL_F SMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: cl_f
+    type: sma
+    window: 200
+- id: cl_f_ema21
+  name: CL_F EMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: cl_f
+    type: ema
+    window: 21
+- id: cl_f_bb_upper
+  name: CL_F BOLLINGER_UPPER
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: cl_f
+    type: bollinger_upper
+    window: 20
+    std_dev: 2
+- id: cl_f_bb_lower
+  name: CL_F BOLLINGER_LOWER
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: cl_f
+    type: bollinger_lower
+    window: 20
+    std_dev: 2
+- id: cl_f_vol20
+  name: CL_F VOLATILITY
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: cl_f
+    type: volatility
+    window: 20
+- id: cl_f_vol60
+  name: CL_F VOLATILITY
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: cl_f
+    type: volatility
+    window: 60
+- id: cl_f_mom1m
+  name: CL_F MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: cl_f
+    type: momentum
+    window: 21
+- id: cl_f_mom3m
+  name: CL_F MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: cl_f
+    type: momentum
+    window: 63
+- id: cl_f_mom6m
+  name: CL_F MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: cl_f
+    type: momentum
+    window: 126
+- id: cl_f_mom12m
+  name: CL_F MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: cl_f
+    type: momentum
+    window: 252
+- id: eurusd_macd
+  name: EURUSD MACD
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: eurusd
+    type: macd
+    fast: 12
+    slow: 26
+    signal: 9
+- id: eurusd_rsi
+  name: EURUSD RSI
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: eurusd
+    type: rsi
+    window: 14
+- id: eurusd_sma50
+  name: EURUSD SMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: eurusd
+    type: sma
+    window: 50
+- id: eurusd_sma100
+  name: EURUSD SMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: eurusd
+    type: sma
+    window: 100
+- id: eurusd_sma200
+  name: EURUSD SMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: eurusd
+    type: sma
+    window: 200
+- id: eurusd_ema21
+  name: EURUSD EMA
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: eurusd
+    type: ema
+    window: 21
+- id: eurusd_bb_upper
+  name: EURUSD BOLLINGER_UPPER
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: eurusd
+    type: bollinger_upper
+    window: 20
+    std_dev: 2
+- id: eurusd_bb_lower
+  name: EURUSD BOLLINGER_LOWER
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: eurusd
+    type: bollinger_lower
+    window: 20
+    std_dev: 2
+- id: eurusd_vol20
+  name: EURUSD VOLATILITY
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: eurusd
+    type: volatility
+    window: 20
+- id: eurusd_vol60
+  name: EURUSD VOLATILITY
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: eurusd
+    type: volatility
+    window: 60
+- id: eurusd_mom1m
+  name: EURUSD MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: eurusd
+    type: momentum
+    window: 21
+- id: eurusd_mom3m
+  name: EURUSD MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: eurusd
+    type: momentum
+    window: 63
+- id: eurusd_mom6m
+  name: EURUSD MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: eurusd
+    type: momentum
+    window: 126
+- id: eurusd_mom12m
+  name: EURUSD MOMENTUM
+  source: technical
+  group: technical
+  frequency: daily
+  params:
+    base: eurusd
+    type: momentum
+    window: 252

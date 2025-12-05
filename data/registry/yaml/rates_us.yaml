@@ -1,0 +1,254 @@
+version: 2.0.0
+generated: '2025-12-05'
+title: U.S. Rates Registry
+description: U.S. Treasury yields across the full curve, TIPS, breakevens, and policy
+  rates
+indicators:
+- id: dgs1mo
+  name: 1-Month Treasury Rate
+  source: fred
+  group: us_treasury
+  frequency: daily
+  params:
+    series_id: DGS1MO
+  category: interest_rates
+- id: dgs3mo
+  name: 3-Month Treasury Rate
+  source: fred
+  group: us_treasury
+  frequency: daily
+  params:
+    series_id: DGS3MO
+  category: interest_rates
+- id: dgs6mo
+  name: 6-Month Treasury Rate
+  source: fred
+  group: us_treasury
+  frequency: daily
+  params:
+    series_id: DGS6MO
+  category: interest_rates
+- id: dgs1
+  name: 1-Year Treasury Rate
+  source: fred
+  group: us_treasury
+  frequency: daily
+  params:
+    series_id: DGS1
+  category: interest_rates
+- id: dgs2
+  name: 2-Year Treasury Rate
+  source: fred
+  group: us_treasury
+  frequency: daily
+  params:
+    series_id: DGS2
+  category: interest_rates
+- id: dgs3
+  name: 3-Year Treasury Rate
+  source: fred
+  group: us_treasury
+  frequency: daily
+  params:
+    series_id: DGS3
+  category: interest_rates
+- id: dgs5
+  name: 5-Year Treasury Rate
+  source: fred
+  group: us_treasury
+  frequency: daily
+  params:
+    series_id: DGS5
+  category: interest_rates
+- id: dgs7
+  name: 7-Year Treasury Rate
+  source: fred
+  group: us_treasury
+  frequency: daily
+  params:
+    series_id: DGS7
+  category: interest_rates
+- id: dgs10
+  name: 10-Year Treasury Rate
+  source: fred
+  group: us_treasury
+  frequency: daily
+  params:
+    series_id: DGS10
+  category: interest_rates
+- id: dgs20
+  name: 20-Year Treasury Rate
+  source: fred
+  group: us_treasury
+  frequency: daily
+  params:
+    series_id: DGS20
+  category: interest_rates
+- id: dgs30
+  name: 30-Year Treasury Rate
+  source: fred
+  group: us_treasury
+  frequency: daily
+  params:
+    series_id: DGS30
+  category: interest_rates
+- id: dfii5
+  name: 5-Year TIPS Rate
+  source: fred
+  group: us_tips
+  frequency: daily
+  params:
+    series_id: DFII5
+  category: interest_rates
+- id: dfii10
+  name: 10-Year TIPS Rate
+  source: fred
+  group: us_tips
+  frequency: daily
+  params:
+    series_id: DFII10
+  category: interest_rates
+- id: dfii20
+  name: 20-Year TIPS Rate
+  source: fred
+  group: us_tips
+  frequency: daily
+  params:
+    series_id: DFII20
+  category: interest_rates
+- id: dfii30
+  name: 30-Year TIPS Rate
+  source: fred
+  group: us_tips
+  frequency: daily
+  params:
+    series_id: DFII30
+  category: interest_rates
+- id: t5yie
+  name: 5-Year Breakeven Inflation
+  source: fred
+  group: breakeven
+  frequency: daily
+  params:
+    series_id: T5YIE
+  category: inflation_expectations
+- id: t10yie
+  name: 10-Year Breakeven Inflation
+  source: fred
+  group: breakeven
+  frequency: daily
+  params:
+    series_id: T10YIE
+  category: inflation_expectations
+- id: fedfunds
+  name: Effective Federal Funds Rate
+  source: fred
+  group: policy_rates
+  frequency: daily
+  params:
+    series_id: FEDFUNDS
+  category: interest_rates
+- id: dfedtaru
+  name: Fed Funds Target Upper
+  source: fred
+  group: policy_rates
+  frequency: daily
+  params:
+    series_id: DFEDTARU
+  category: interest_rates
+- id: dfedtarl
+  name: Fed Funds Target Lower
+  source: fred
+  group: policy_rates
+  frequency: daily
+  params:
+    series_id: DFEDTARL
+  category: interest_rates
+- id: iorb
+  name: Interest on Reserve Balances
+  source: fred
+  group: policy_rates
+  frequency: daily
+  params:
+    series_id: IORB
+  category: interest_rates
+- id: sofr
+  name: Secured Overnight Financing Rate
+  source: fred
+  group: money_market
+  frequency: daily
+  params:
+    series_id: SOFR
+  category: interest_rates
+- id: sofr30
+  name: 30-Day Average SOFR
+  source: fred
+  group: money_market
+  frequency: daily
+  params:
+    series_id: SOFR30DAYAVG
+  category: interest_rates
+- id: sofr90
+  name: 90-Day Average SOFR
+  source: fred
+  group: money_market
+  frequency: daily
+  params:
+    series_id: SOFR90DAYAVG
+  category: interest_rates
+- id: tlt
+  name: 20+ Year Treasury ETF
+  source: yahoo
+  group: treasury_etf
+  frequency: daily
+  params:
+    ticker: TLT
+  asset_class: fixed_income
+- id: ief
+  name: 7-10 Year Treasury ETF
+  source: yahoo
+  group: treasury_etf
+  frequency: daily
+  params:
+    ticker: IEF
+  asset_class: fixed_income
+- id: shy
+  name: 1-3 Year Treasury ETF
+  source: yahoo
+  group: treasury_etf
+  frequency: daily
+  params:
+    ticker: SHY
+  asset_class: fixed_income
+- id: shv
+  name: Short Treasury ETF
+  source: yahoo
+  group: treasury_etf
+  frequency: daily
+  params:
+    ticker: SHV
+  asset_class: fixed_income
+- id: bil
+  name: T-Bill ETF
+  source: yahoo
+  group: treasury_etf
+  frequency: daily
+  params:
+    ticker: BIL
+  asset_class: fixed_income
+- id: govt
+  name: Treasury Bond ETF
+  source: yahoo
+  group: treasury_etf
+  frequency: daily
+  params:
+    ticker: GOVT
+  asset_class: fixed_income
+- id: tip
+  name: TIPS ETF
+  source: yahoo
+  group: treasury_etf
+  frequency: daily
+  params:
+    ticker: TIP
+  asset_class: fixed_income

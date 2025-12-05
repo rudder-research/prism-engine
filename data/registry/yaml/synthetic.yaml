@@ -1,0 +1,303 @@
+version: 2.0.0
+generated: '2025-12-05'
+title: Synthetic Indicators Registry
+description: Yield curve spreads, real yields, credit spreads, liquidity ratios, cross-asset
+  ratios
+indicators:
+- id: spread_10y2y
+  name: 10Y-2Y Yield Spread
+  source: synthetic
+  group: yield_curve
+  frequency: daily
+  params:
+    formula: spread
+    inputs:
+    - dgs10
+    - dgs2
+- id: spread_10y3m
+  name: 10Y-3M Yield Spread
+  source: synthetic
+  group: yield_curve
+  frequency: daily
+  params:
+    formula: spread
+    inputs:
+    - dgs10
+    - dgs3mo
+- id: spread_5y2y
+  name: 5Y-2Y Yield Spread
+  source: synthetic
+  group: yield_curve
+  frequency: daily
+  params:
+    formula: spread
+    inputs:
+    - dgs5
+    - dgs2
+- id: spread_30y10y
+  name: 30Y-10Y Yield Spread
+  source: synthetic
+  group: yield_curve
+  frequency: daily
+  params:
+    formula: spread
+    inputs:
+    - dgs30
+    - dgs10
+- id: spread_2y3m
+  name: 2Y-3M Yield Spread
+  source: synthetic
+  group: yield_curve
+  frequency: daily
+  params:
+    formula: spread
+    inputs:
+    - dgs2
+    - dgs3mo
+- id: spread_10y5y
+  name: 10Y-5Y Yield Spread
+  source: synthetic
+  group: yield_curve
+  frequency: daily
+  params:
+    formula: spread
+    inputs:
+    - dgs10
+    - dgs5
+- id: real_yield_5y
+  name: 5Y Real Yield
+  source: synthetic
+  group: real_yield
+  frequency: daily
+  params:
+    formula: spread
+    inputs:
+    - dgs5
+    - t5yie
+- id: real_yield_10y
+  name: 10Y Real Yield
+  source: synthetic
+  group: real_yield
+  frequency: daily
+  params:
+    formula: spread
+    inputs:
+    - dgs10
+    - t10yie
+- id: credit_aaa
+  name: AAA Credit Spread
+  source: synthetic
+  group: credit_spread
+  frequency: daily
+  params:
+    formula: spread
+    inputs:
+    - aaa_yield
+    - dgs10
+- id: credit_baa
+  name: BAA Credit Spread
+  source: synthetic
+  group: credit_spread
+  frequency: daily
+  params:
+    formula: spread
+    inputs:
+    - baa_yield
+    - dgs10
+- id: credit_hy_ig
+  name: HY-IG Spread
+  source: synthetic
+  group: credit_spread
+  frequency: daily
+  params:
+    formula: spread
+    inputs:
+    - bamlh0a0hym2
+    - bamlc0a0cm
+- id: rrp_m2_ratio
+  name: RRP/M2 Ratio
+  source: synthetic
+  group: liquidity_ratio
+  frequency: daily
+  params:
+    formula: ratio
+    inputs:
+    - rrpontsyd
+    - m2
+- id: tga_m2_ratio
+  name: TGA/M2 Ratio
+  source: synthetic
+  group: liquidity_ratio
+  frequency: daily
+  params:
+    formula: ratio
+    inputs:
+    - wtregen
+    - m2
+- id: fed_assets_m2
+  name: Fed Assets/M2
+  source: synthetic
+  group: liquidity_ratio
+  frequency: daily
+  params:
+    formula: ratio
+    inputs:
+    - walcl
+    - m2
+- id: employment_spread
+  name: Employment Breadth
+  source: synthetic
+  group: employment_spread
+  frequency: daily
+  params:
+    formula: spread
+    inputs:
+    - unrate
+    - u6rate
+- id: jolts_unemployed
+  name: Job Openings per Unemployed
+  source: synthetic
+  group: employment_spread
+  frequency: daily
+  params:
+    formula: ratio
+    inputs:
+    - jolts
+    - unrate
+- id: vix_term_spread
+  name: VIX Term Spread
+  source: synthetic
+  group: vol_term_structure
+  frequency: daily
+  params:
+    formula: spread
+    inputs:
+    - vix3m
+    - vix
+- id: vix_9d_1m
+  name: VIX 9D-1M Spread
+  source: synthetic
+  group: vol_term_structure
+  frequency: daily
+  params:
+    formula: spread
+    inputs:
+    - vix
+    - vix9d
+- id: spx_gold_ratio
+  name: SPX/Gold Ratio
+  source: synthetic
+  group: cross_asset
+  frequency: daily
+  params:
+    formula: ratio
+    inputs:
+    - spy
+    - gld
+- id: spx_tlt_ratio
+  name: SPX/TLT Ratio
+  source: synthetic
+  group: cross_asset
+  frequency: daily
+  params:
+    formula: ratio
+    inputs:
+    - spy
+    - tlt
+- id: copper_gold_ratio
+  name: Copper/Gold Ratio
+  source: synthetic
+  group: cross_asset
+  frequency: daily
+  params:
+    formula: ratio
+    inputs:
+    - hg_f
+    - gc_f
+- id: oil_gold_ratio
+  name: Oil/Gold Ratio
+  source: synthetic
+  group: cross_asset
+  frequency: daily
+  params:
+    formula: ratio
+    inputs:
+    - cl_f
+    - gc_f
+- id: russell_spy_ratio
+  name: Russell/SPY Ratio
+  source: synthetic
+  group: cross_asset
+  frequency: daily
+  params:
+    formula: ratio
+    inputs:
+    - iwm
+    - spy
+- id: qqq_spy_ratio
+  name: QQQ/SPY Ratio
+  source: synthetic
+  group: cross_asset
+  frequency: daily
+  params:
+    formula: ratio
+    inputs:
+    - qqq
+    - spy
+- id: spy_yoy
+  name: SPY YoY Return
+  source: synthetic
+  group: momentum
+  frequency: daily
+  params:
+    formula: yoy
+    inputs:
+    - spy
+- id: m2_yoy
+  name: M2 YoY Growth
+  source: synthetic
+  group: monetary_growth
+  frequency: daily
+  params:
+    formula: yoy
+    inputs:
+    - m2
+- id: fed_assets_yoy
+  name: Fed Assets YoY
+  source: synthetic
+  group: monetary_growth
+  frequency: daily
+  params:
+    formula: yoy
+    inputs:
+    - walcl
+- id: us_de_10y_spread
+  name: US-Germany 10Y Spread
+  source: synthetic
+  group: global_spread
+  frequency: daily
+  params:
+    formula: spread
+    inputs:
+    - dgs10
+    - de_10y
+- id: us_jp_10y_spread
+  name: US-Japan 10Y Spread
+  source: synthetic
+  group: global_spread
+  frequency: daily
+  params:
+    formula: spread
+    inputs:
+    - dgs10
+    - jp_10y
+- id: italy_germany_spread
+  name: Italy-Germany 10Y Spread
+  source: synthetic
+  group: global_spread
+  frequency: daily
+  params:
+    formula: spread
+    inputs:
+    - it_10y
+    - de_10y

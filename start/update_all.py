@@ -210,6 +210,8 @@ def run_fred_fetcher(
     """
     Fetch economic data from FRED and store it in the database.
 
+    Supports both legacy registry format and YAML-based Full Institutional Pack.
+
     Returns:
         Number of indicators successfully updated.
     """
@@ -224,21 +226,6 @@ def run_fred_fetcher(
     # Economic metrics live under registry["economic"]
     economic_metrics = registry.get("economic", [])
 
-    # Mapping from registry metric name -> FRED series ID
-    REGISTRY_TO_FRED = {
-        "cpi": "CPIAUCSL",
-        "ppi": "PPIACO",
-        "unrate": "UNRATE",
-        "payems": "PAYEMS",
-        "m2": "M2SL",
-        "gdp": "GDP",
-        "dgs10": "DGS10",
-        "dgs2": "DGS2",
-        "dgs3mo": "DGS3MO",
-        "baaffm": "BAAFFM",
-        "baa10ym": "BAA10YM",
-    }
-
     fetcher = FREDFetcher()
     cursor = conn.cursor()
     count = 0
@@ -247,9 +234,11 @@ def run_fred_fetcher(
         name = metric.get("name", "").lower()
         freq = metric.get("frequency", "monthly")
 
-        fred_id = REGISTRY_TO_FRED.get(name)
+        # Get FRED series ID - check multiple field names for compatibility
+        fred_id = metric.get("series_id") or metric.get("fred_id")
+
         if not fred_id:
-            logger.warning(f"No FRED mapping for metric '{name}'")
+            logger.debug(f"No FRED series_id for metric '{name}', skipping")
             continue
 
         try:
@@ -495,6 +484,30 @@ def main() -> int:
         print("=" * 60)
         print(f"Finished:   {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"DB path:    {db_path}")
+        print()
+
+        # Print indicator summary by source
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT source, COUNT(*) as count
+            FROM indicators
+            GROUP BY source
+            ORDER BY count DESC
+        """)
+        source_counts = cursor.fetchall()
+
+        if source_counts:
+            print("Indicators by Source:")
+            for source, count in source_counts:
+                print(f"  {source:15s}: {count:4d}")
+
+        # Total indicators and values
+        cursor.execute("SELECT COUNT(*) FROM indicators")
+        total_indicators = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM indicator_values")
+        total_values = cursor.fetchone()[0]
+        print(f"\nTotal indicators:    {total_indicators}")
+        print(f"Total data points:   {total_values:,}")
 
         conn.close()
         return 0
