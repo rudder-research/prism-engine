@@ -25,6 +25,7 @@ import requests
 
 from fetch.fetcher_base import BaseFetcher
 
+
 logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -32,6 +33,8 @@ PROJECT_ROOT = Path(__file__).parent.parent
 
 class FREDFetcher(BaseFetcher):
     """Fetcher for FRED economic indicators."""
+
+    BASE_URL = "https://api.stlouisfed.org/fred/series/observations"
 
     BASE_URL = "https://api.stlouisfed.org/fred/series/observations"
 
@@ -90,6 +93,9 @@ class FREDFetcher(BaseFetcher):
             logger.info(f"Fetched {len(df)} rows for {ticker}")
             return df[["date", "value"]]
 
+        except requests.RequestException as e:
+            logger.error(f"Network error fetching {ticker}: {e}")
+            return None
         except Exception as e:
             logger.error(f"Error fetching {ticker}: {e}")
             return None

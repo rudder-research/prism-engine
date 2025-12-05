@@ -1,9 +1,41 @@
+
+This module provides a production-ready fetcher for Yahoo Finance data.
+It integrates with the unified database schema via data.sql.db.
+
+Usage:
+    from fetch.fetcher_yahoo import YahooFetcher
+
+    fetcher = YahooFetcher()
+
+    # Fetch single ticker
+    df = fetcher.fetch_single("SPY")
+
+    # Fetch all enabled tickers from registry and write to database
+    results = fetcher.fetch_all()
+
+    # Test connection
+    if fetcher.test_connection():
+        print("Yahoo Finance is accessible")
+"""
+
+import json
+import logging
+from pathlib import Path
+from typing import Optional, Dict, Any, List
+
+import pandas as pd
+
+from .fetcher_base import BaseFetcher
 import pandas as pd
 import yfinance as yf
 import logging
 from fetch.fetcher_base import BaseFetcher
 
+
 logger = logging.getLogger(__name__)
+
+# Project root for finding registries
+PROJECT_ROOT = Path(__file__).parent.parent
 
 
 class YahooFetcher(BaseFetcher):
