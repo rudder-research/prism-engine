@@ -181,6 +181,110 @@ class YahooFetcher(BaseFetcher):
             return pd.DataFrame()
 
 
+    def fetch_all(
+        self,
+        tickers: List[str],
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        write_to_db: bool = False,
+        system: str = "finance",
+        **kwargs
+    ) -> pd.DataFrame:
+        """
+        Fetch all tickers and optionally write to database.
+
+        This method fetches multiple tickers, combines them into a single
+        DataFrame, and optionally persists the data to the PRISM database.
+
+        Args:
+            tickers: List of ticker symbols to fetch
+            start_date: Start date (YYYY-MM-DD)
+            end_date: End date (YYYY-MM-DD)
+            write_to_db: If True, write results to database
+            system: System type for database storage (default: 'finance')
+
+        Returns:
+            DataFrame with date and all ticker close prices
+
+        Example:
+            fetcher = YahooFetcher()
+            df = fetcher.fetch_all(
+                ['SPY', 'QQQ', 'IWM'],
+                start_date='2020-01-01',
+                write_to_db=True
+            )
+        """
+        # Fetch all tickers
+        df = self.fetch_multiple(tickers, start_date, end_date, **kwargs)
+
+        if df.empty:
+            logger.warning("No data fetched for any ticker")
+            return df
+
+        # Write to database if requested
+        if write_to_db:
+            try:
+                from data.sql.db import write_dataframe, log_fetch
+                from datetime import datetime
+
+                started_at = datetime.now().isoformat()
+
+                for ticker in tickers:
+                    ticker_lower = ticker.lower()
+                    if ticker_lower not in df.columns:
+                        logger.warning(f"Ticker {ticker} not found in results")
+                        continue
+
+                    # Create single-column dataframe for this ticker
+                    ticker_df = df[["date", ticker_lower]].copy()
+                    ticker_df = ticker_df.rename(columns={ticker_lower: "value"})
+                    ticker_df = ticker_df.dropna()
+
+                    if ticker_df.empty:
+                        continue
+
+                    try:
+                        rows = write_dataframe(
+                            ticker_df,
+                            indicator_name=ticker,
+                            system=system,
+                            source="Yahoo Finance",
+                            frequency="daily",
+                        )
+
+                        log_fetch(
+                            source="yahoo",
+                            entity=ticker,
+                            operation="fetch",
+                            status="success",
+                            rows_fetched=len(ticker_df),
+                            rows_inserted=rows,
+                            started_at=started_at,
+                        )
+
+                        logger.info(f"Wrote {rows} rows for {ticker}")
+
+                    except Exception as e:
+                        log_fetch(
+                            source="yahoo",
+                            entity=ticker,
+                            operation="fetch",
+                            status="error",
+                            error_message=str(e),
+                            started_at=started_at,
+                        )
+                        logger.error(f"Failed to write {ticker}: {e}")
+
+            except ImportError:
+                logger.error(
+                    "Database modules not available. "
+                    "Install with: pip install -e .[db]"
+                )
+                raise
+
+        return df
+
+
 # Common Yahoo Finance tickers for financial analysis
 COMMON_YAHOO_TICKERS = {
     # Major Indices
