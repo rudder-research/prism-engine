@@ -1,6 +1,3 @@
-"""
-PRISM SQL Database Module
-=========================
 
 SQLite-based storage for indicators and time series data.
 
@@ -57,3 +54,14 @@ __all__ = [
     # Legacy module
     "prism_db",
 ]
+from .db_path import get_db_path
+from .prism_db import (
+    get_connection,
+    initialize_db,
+    run_all_migrations,
+    write_dataframe,
+    load_indicator,
+    query,
+    export_to_csv,
+)
+

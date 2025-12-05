@@ -2,23 +2,16 @@
 FREDFetcher - Fetch economic time series from FRED
 ==================================================
 
-This module provides a clean fetcher for FRED (Federal Reserve Economic Data).
-It integrates with the unified database schema via data.sql.db.
+This module fetches economic indicators from FRED (Federal Reserve Economic Data)
+and writes them into the unified PRISM database schema (via prism_db).
 
 Usage:
     from fetch.fetcher_fred import FREDFetcher
 
     fetcher = FREDFetcher()
-
-    # Fetch single series
     df = fetcher.fetch_single("DGS10")
 
-    # Fetch all enabled series from registry and write to database
-    results = fetcher.fetch_all()
-
-    # Test connection
-    if fetcher.test_connection():
-        print("FRED API is accessible")
+    results = fetcher.fetch_all()   # loads registry + writes to DB
 """
 
 import json
@@ -30,75 +23,42 @@ from typing import Optional, Dict, Any, List
 import pandas as pd
 import requests
 
-from .fetcher_base import BaseFetcher
+from fetch.fetcher_base import BaseFetcher
 
 
 logger = logging.getLogger(__name__)
 
-# Project root for finding registries
 PROJECT_ROOT = Path(__file__).parent.parent
 
 
 class FREDFetcher(BaseFetcher):
-    """
-    Fetch economic data from FRED (Federal Reserve Bank of St. Louis).
+    """Fetcher for FRED economic indicators."""
 
-    Registry entry example:
-    {
-        "key": "dgs10",
-        "ticker": "DGS10",
-        "source": "fred",
-        "enabled": true,
-        "name": "10-Year Treasury Constant Maturity Rate",
-        "frequency": "daily"
-    }
-    """
+    BASE_URL = "https://api.stlouisfed.org/fred/series/observations"
 
     BASE_URL = "https://api.stlouisfed.org/fred/series/observations"
 
     def __init__(self, api_key: Optional[str] = None, checkpoint_dir: Optional[Path] = None):
-        """
-        Initialize FRED fetcher.
-
-        Args:
-            api_key: FRED API key (or set FRED_API_KEY env var)
-            checkpoint_dir: Optional directory for checkpoints
-        """
         super().__init__(checkpoint_dir)
         self.api_key = api_key or os.getenv("FRED_API_KEY") or os.getenv("FRED_API")
 
         if not self.api_key:
             logger.warning(
                 "No FRED API key found. Set FRED_API_KEY environment variable. "
-                "Get a free key at https://fred.stlouisfed.org/docs/api/api_key.html"
+                "Get a free key at: https://fred.stlouisfed.org/docs/api/api_key.html"
             )
 
-    def validate_response(self, response: Any) -> bool:
-        """Validate FRED API response."""
-        if response is None:
-            return False
-        if isinstance(response, pd.DataFrame) and response.empty:
-            return False
-        return True
-
+    # ------------------------------------------------------------
+    # SINGLE SERIES FETCH
+    # ------------------------------------------------------------
     def fetch_single(
         self,
         ticker: str,
-        start_date: Optional[str] = None,
+        start_date: Optional[str] = "1900-01-01",
         end_date: Optional[str] = None,
         **kwargs
     ) -> Optional[pd.DataFrame]:
-        """
-        Fetch data for a single FRED series.
 
-        Args:
-            ticker: The FRED series ID (e.g., 'DGS10')
-            start_date: Optional start date (YYYY-MM-DD)
-            end_date: Optional end date (YYYY-MM-DD)
-
-        Returns:
-            DataFrame with 'date' and 'value' columns, or None on error
-        """
         if not self.api_key:
             logger.error("Cannot fetch without FRED API key")
             return None
@@ -107,7 +67,7 @@ class FREDFetcher(BaseFetcher):
             "series_id": ticker,
             "api_key": self.api_key,
             "file_type": "json",
-            "observation_start": start_date or "1900-01-01",
+            "observation_start": start_date,
         }
 
         if end_date:
@@ -117,33 +77,20 @@ class FREDFetcher(BaseFetcher):
 
         try:
             response = requests.get(self.BASE_URL, params=params, timeout=30)
+            response.raise_for_status()
 
-            if response.status_code != 200:
-                logger.error(f"FRED API error for {ticker}: {response.status_code}")
-                return None
-
-            data = response.json().get("observations", [])
-
-            if not data:
+            obs = response.json().get("observations", [])
+            if not obs:
                 logger.warning(f"FRED returned no data for {ticker}")
                 return None
 
-            # Convert to DataFrame
-            df = pd.DataFrame(data)
-
-            # Clean up
-            df = df.rename(columns={"date": "date", "value": "value"})
+            df = pd.DataFrame(obs)
             df["date"] = pd.to_datetime(df["date"], errors="coerce")
             df["value"] = pd.to_numeric(df["value"], errors="coerce")
 
-            # Remove rows with invalid dates or values
-            df = df.dropna(subset=["date", "value"])
-
-            # Sort by date
-            df = df.sort_values("date").reset_index(drop=True)
+            df = df.dropna(subset=["date", "value"]).sort_values("date").reset_index(drop=True)
 
             logger.info(f"Fetched {len(df)} rows for {ticker}")
-
             return df[["date", "value"]]
 
         except requests.RequestException as e:
@@ -153,6 +100,9 @@ class FREDFetcher(BaseFetcher):
             logger.error(f"Error fetching {ticker}: {e}")
             return None
 
+    # ------------------------------------------------------------
+    # MULTIPLE SERIES FETCH
+    # ------------------------------------------------------------
     def fetch_multiple(
         self,
         tickers: List[str],
@@ -160,31 +110,19 @@ class FREDFetcher(BaseFetcher):
         end_date: Optional[str] = None,
         **kwargs
     ) -> Dict[str, pd.DataFrame]:
-        """
-        Fetch multiple FRED series.
 
-        Args:
-            tickers: List of FRED series IDs
-            start_date: Optional start date
-            end_date: Optional end date
-
-        Returns:
-            Dictionary mapping tickers to DataFrames
-        """
         results = {}
         for ticker in tickers:
             df = self.fetch_single(ticker, start_date, end_date)
             if df is not None and not df.empty:
                 results[ticker] = df
+
         return results
 
+    # ------------------------------------------------------------
+    # LOAD ECONOMIC REGISTRY
+    # ------------------------------------------------------------
     def load_economic_registry(self) -> List[Dict[str, Any]]:
-        """
-        Load the economic registry from data/registry/.
-
-        Returns:
-            List of series configurations
-        """
         registry_path = PROJECT_ROOT / "data" / "registry" / "economic_registry.json"
 
         if not registry_path.exists():
@@ -196,99 +134,93 @@ class FREDFetcher(BaseFetcher):
 
         return registry.get("series", [])
 
+    # ------------------------------------------------------------
+    # FETCH ALL (MAIN ENTRY POINT)
+    # ------------------------------------------------------------
     def fetch_all(
         self,
         write_to_db: bool = True,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None
     ) -> Dict[str, pd.DataFrame]:
-        """
-        Fetch all enabled series from the economic registry.
 
-        Args:
-            write_to_db: If True, write results to database
-            start_date: Optional start date filter
-            end_date: Optional end date filter
-
-        Returns:
-            Dictionary mapping indicator keys to DataFrames
-        """
         series_list = self.load_economic_registry()
         results = {}
 
-        # Import database module only if needed
-        db = None
+        # Try DB
         if write_to_db:
             try:
-                from data.sql.db import add_indicator, write_dataframe, log_fetch, init_database
-                init_database()  # Ensure tables exist
-                db = True
-            except ImportError as e:
-                logger.warning(f"Database module not available: {e}")
-                db = None
+                from data.sql.prism_db import (
+                    init_database,
+                    ensure_indicator,
+                    write_values,
+                    log_fetch
+                )
+                init_database()
+                db_ready = True
+            except Exception as e:
+                logger.error(f"Database unavailable: {e}")
+                db_ready = False
+        else:
+            db_ready = False
 
-        for series_config in series_list:
-            if not series_config.get("enabled", True):
-                logger.debug(f"Skipping disabled series: {series_config.get('key')}")
+        for cfg in series_list:
+            if not cfg.get("enabled", True):
                 continue
 
-            key = series_config.get("key")
-            ticker = series_config.get("ticker", key.upper())
-            frequency = series_config.get("frequency", "daily")
-            source = series_config.get("source", "fred")
+            key = cfg["key"]
+            ticker = cfg.get("ticker", key.upper())
 
             logger.info(f"Fetching economic series: {key} ({ticker})")
 
             try:
                 df = self.fetch_single(ticker, start_date, end_date)
 
-                if df is not None and not df.empty:
-                    results[key] = df
+                if df is None or df.empty:
+                    logger.warning(f"No data returned for {key}")
 
-                    if db:
-                        # Register indicator
-                        add_indicator(
-                            name=key,
-                            system="economic",
-                            frequency=frequency,
-                            source=source,
-                            description=series_config.get("name")
-                        )
-
-                        # Write data
-                        rows = write_dataframe(df, indicator=key, system="economic")
-
-                        # Log fetch
+                    if db_ready:
                         log_fetch(
                             indicator=key,
                             system="economic",
-                            source=source,
-                            rows_fetched=rows,
-                            status="success"
-                        )
-
-                        logger.info(f"  -> Wrote {rows} rows to database for {key}")
-                else:
-                    logger.warning(f"  -> No data returned for {key}")
-
-                    if db:
-                        log_fetch(
-                            indicator=key,
-                            system="economic",
-                            source=source,
+                            source="fred",
                             rows_fetched=0,
                             status="error",
                             error_message="No data returned"
                         )
+                    continue
 
-            except Exception as e:
-                logger.error(f"  -> Error fetching {key}: {e}")
+                results[key] = df
 
-                if db:
+                if db_ready:
+                    ensure_indicator(
+                        name=key,
+                        system="economic",
+                        frequency=cfg.get("frequency", "daily"),
+                        source="fred",
+                        description=cfg.get("name", "")
+                    )
+
+                    rows = write_values(key, "economic", df)
+
                     log_fetch(
                         indicator=key,
                         system="economic",
-                        source=source,
+                        source="fred",
+                        rows_fetched=rows,
+                        status="success"
+                    )
+
+                    logger.info(f"  -> Wrote {rows} rows for {key}")
+
+            except Exception as e:
+                logger.error(f"Error fetching {key}: {e}")
+
+                if db_ready:
+                    log_fetch(
+                        indicator=key,
+                        system="economic",
+                        source="fred",
                         rows_fetched=0,
                         status="error",
                         error_message=str(e)
@@ -297,17 +229,10 @@ class FREDFetcher(BaseFetcher):
         logger.info(f"Completed: {len(results)} economic series fetched")
         return results
 
+    # ------------------------------------------------------------
+    # CONNECTION TEST
+    # ------------------------------------------------------------
     def test_connection(self) -> bool:
-        """
-        Test the FRED API connection.
-
-        Returns:
-            True if connection successful
-        """
-        if not self.api_key:
-            logger.error("No API key configured")
-            return False
-
         try:
             df = self.fetch_single("DGS10")
             return df is not None and not df.empty
@@ -315,70 +240,5 @@ class FREDFetcher(BaseFetcher):
             logger.error(f"Connection test failed: {e}")
             return False
 
-    def get_series_info(self, ticker: str) -> Optional[dict]:
-        """
-        Get metadata for a FRED series.
 
-        Args:
-            ticker: FRED series ID
-
-        Returns:
-            Dictionary with series metadata
-        """
-        if not self.api_key:
-            logger.error("Cannot fetch without FRED API key")
-            return None
-
-        url = "https://api.stlouisfed.org/fred/series"
-        params = {
-            "series_id": ticker,
-            "api_key": self.api_key,
-            "file_type": "json",
-        }
-
-        try:
-            response = requests.get(url, params=params, timeout=30)
-            if response.status_code == 200:
-                data = response.json()
-                series = data.get("seriess", [])
-                return series[0] if series else None
-            return None
-        except Exception as e:
-            logger.error(f"Error getting info for {ticker}: {e}")
-            return None
-
-
-# Common FRED series for financial analysis
-COMMON_FRED_SERIES = {
-    # Interest Rates
-    "DFF": "Federal Funds Rate",
-    "DGS10": "10-Year Treasury",
-    "DGS2": "2-Year Treasury",
-    "T10Y2Y": "10Y-2Y Spread",
-
-    # Economic Indicators
-    "GDP": "Gross Domestic Product",
-    "UNRATE": "Unemployment Rate",
-    "CPIAUCSL": "Consumer Price Index",
-    "PCEPI": "PCE Price Index",
-
-    # Money Supply
-    "M2SL": "M2 Money Supply",
-    "BOGMBASE": "Monetary Base",
-
-    # Credit
-    "BAMLH0A0HYM2": "High Yield Spread",
-    "TEDRATE": "TED Spread",
-
-    # Housing
-    "CSUSHPINSA": "Case-Shiller Home Price Index",
-    "HOUST": "Housing Starts",
-
-    # Manufacturing
-    "INDPRO": "Industrial Production",
-    "UMCSENT": "Consumer Sentiment",
-}
-
-
-# Backward compatibility aliases
 FetcherFRED = FREDFetcher
