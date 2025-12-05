@@ -181,6 +181,84 @@ class YahooFetcher(BaseFetcher):
             return pd.DataFrame()
 
 
+def fetch_registry_market_data(
+    registry: dict,
+    conn,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+) -> int:
+    """
+    Fetch market data for all enabled instruments in the registry.
+
+    This is the main entry point for registry-driven Yahoo Finance fetching,
+    designed to be called from update_all.py or similar pipeline scripts.
+
+    Args:
+        registry: Market registry dictionary with instruments list
+        conn: Database connection for storing results
+        start_date: Start date (YYYY-MM-DD format)
+        end_date: End date (YYYY-MM-DD format)
+
+    Returns:
+        Number of instruments successfully fetched
+    """
+    fetcher = YahooFetcher()
+    success_count = 0
+
+    instruments = registry.get("instruments", [])
+    enabled_instruments = [i for i in instruments if i.get("enabled", True)]
+
+    logger.info(f"Fetching {len(enabled_instruments)} enabled instruments from registry")
+
+    for instrument in enabled_instruments:
+        key = instrument.get("key", "")
+        ticker = instrument.get("ticker", key.upper())
+
+        try:
+            logger.info(f"Fetching {key} ({ticker})...")
+            df = fetcher.fetch_single(
+                ticker,
+                start_date=start_date,
+                end_date=end_date,
+            )
+
+            if df is not None and not df.empty:
+                # Store in database if connection provided
+                if conn is not None:
+                    try:
+                        # Prepare data for database storage
+                        # Standardize column names for DB
+                        db_df = df.copy()
+
+                        # Ensure we have a date column
+                        if "date" in db_df.columns:
+                            db_df = db_df.set_index("date")
+
+                        # Write to database using the key as table/identifier
+                        table_name = f"market_{key}"
+                        db_df.to_sql(
+                            table_name,
+                            conn,
+                            if_exists="replace",
+                            index=True,
+                        )
+                        logger.info(f"  -> Stored {len(df)} rows for {key}")
+                    except Exception as db_err:
+                        logger.warning(f"  -> DB write failed for {key}: {db_err}")
+
+                success_count += 1
+                logger.info(f"  -> Fetched {len(df)} rows for {key}")
+            else:
+                logger.warning(f"  -> No data returned for {key}")
+
+        except Exception as e:
+            logger.error(f"  -> Error fetching {key}: {e}")
+            continue
+
+    logger.info(f"Registry fetch complete: {success_count}/{len(enabled_instruments)} successful")
+    return success_count
+
+
 # Common Yahoo Finance tickers for financial analysis
 COMMON_YAHOO_TICKERS = {
     # Major Indices
