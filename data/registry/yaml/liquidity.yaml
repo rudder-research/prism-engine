@@ -1,0 +1,126 @@
+version: 2.0.0
+generated: '2025-12-05'
+title: Liquidity Registry
+description: Money supply (M1, M2), Fed balance sheet, RRP, reserves, and financial
+  conditions
+indicators:
+- id: m1
+  name: M1 Money Stock
+  source: fred
+  group: money_supply
+  frequency: monthly
+  params:
+    series_id: M1SL
+  category: liquidity
+- id: m2
+  name: M2 Money Stock
+  source: fred
+  group: money_supply
+  frequency: monthly
+  params:
+    series_id: M2SL
+  category: liquidity
+- id: mbase
+  name: Monetary Base
+  source: fred
+  group: money_supply
+  frequency: monthly
+  params:
+    series_id: BOGMBASE
+  category: liquidity
+- id: walcl
+  name: Fed Total Assets
+  source: fred
+  group: fed_balance_sheet
+  frequency: monthly
+  params:
+    series_id: WALCL
+  category: liquidity
+- id: treast
+  name: Fed Treasury Holdings
+  source: fred
+  group: fed_balance_sheet
+  frequency: monthly
+  params:
+    series_id: TREAST
+  category: liquidity
+- id: wshomcb
+  name: Fed MBS Holdings
+  source: fred
+  group: fed_balance_sheet
+  frequency: monthly
+  params:
+    series_id: WSHOMCB
+  category: liquidity
+- id: rrpontsyd
+  name: Overnight Reverse Repo
+  source: fred
+  group: repo_operations
+  frequency: monthly
+  params:
+    series_id: RRPONTSYD
+  category: liquidity
+- id: wlrral
+  name: Fed Reverse Repo Agreements
+  source: fred
+  group: repo_operations
+  frequency: monthly
+  params:
+    series_id: WLRRAL
+  category: liquidity
+- id: totresns
+  name: Total Reserves
+  source: fred
+  group: reserves
+  frequency: monthly
+  params:
+    series_id: TOTRESNS
+  category: liquidity
+- id: excsresns
+  name: Excess Reserves
+  source: fred
+  group: reserves
+  frequency: monthly
+  params:
+    series_id: EXCSRESNS
+  category: liquidity
+- id: wresbal
+  name: Reserve Balances
+  source: fred
+  group: reserves
+  frequency: monthly
+  params:
+    series_id: WRESBAL
+  category: liquidity
+- id: wtregen
+  name: Treasury General Account
+  source: fred
+  group: tga
+  frequency: monthly
+  params:
+    series_id: WTREGEN
+  category: liquidity
+- id: nfci
+  name: Chicago Fed NFCI
+  source: fred
+  group: financial_conditions
+  frequency: monthly
+  params:
+    series_id: NFCI
+  category: liquidity
+- id: anfci
+  name: Chicago Fed Adjusted NFCI
+  source: fred
+  group: financial_conditions
+  frequency: monthly
+  params:
+    series_id: ANFCI
+  category: liquidity
+- id: stlfsi4
+  name: St Louis Fed FSI
+  source: fred
+  group: financial_conditions
+  frequency: monthly
+  params:
+    series_id: STLFSI4
+  category: liquidity

@@ -1,0 +1,94 @@
+version: 2.0.0
+generated: '2025-12-05'
+title: Global Rates Registry
+description: 'Sovereign yields from major economies: Germany, UK, Japan, Italy, Canada,
+  Australia'
+indicators:
+- id: de_10y
+  name: Germany 10-Year Yield
+  source: fred
+  group: germany_sovereign
+  frequency: monthly
+  params:
+    series_id: IRLTLT01DEM156N
+  category: interest_rates
+- id: de_2y
+  name: Germany 2-Year Yield
+  source: fred
+  group: germany_sovereign
+  frequency: monthly
+  params:
+    series_id: IRLTST01DEM156N
+  category: interest_rates
+- id: uk_10y
+  name: UK 10-Year Gilt Yield
+  source: fred
+  group: uk_sovereign
+  frequency: monthly
+  params:
+    series_id: IRLTLT01GBM156N
+  category: interest_rates
+- id: jp_10y
+  name: Japan 10-Year JGB Yield
+  source: fred
+  group: japan_sovereign
+  frequency: monthly
+  params:
+    series_id: IRLTLT01JPM156N
+  category: interest_rates
+- id: it_10y
+  name: Italy 10-Year BTP Yield
+  source: fred
+  group: italy_sovereign
+  frequency: monthly
+  params:
+    series_id: IRLTLT01ITM156N
+  category: interest_rates
+- id: ca_10y
+  name: Canada 10-Year Yield
+  source: fred
+  group: canada_sovereign
+  frequency: monthly
+  params:
+    series_id: IRLTLT01CAM156N
+  category: interest_rates
+- id: au_10y
+  name: Australia 10-Year Yield
+  source: fred
+  group: australia_sovereign
+  frequency: monthly
+  params:
+    series_id: IRLTLT01AUM156N
+  category: interest_rates
+- id: bndx
+  name: International Bond ETF
+  source: yahoo
+  group: global_bond_etf
+  frequency: daily
+  params:
+    ticker: BNDX
+  asset_class: fixed_income
+- id: iagg
+  name: Intl Aggregate Bond ETF
+  source: yahoo
+  group: global_bond_etf
+  frequency: daily
+  params:
+    ticker: IAGG
+  asset_class: fixed_income
+- id: emb
+  name: EM USD Bond ETF
+  source: yahoo
+  group: em_bond_etf
+  frequency: daily
+  params:
+    ticker: EMB
+  asset_class: fixed_income
+- id: vwob
+  name: EM Government Bond ETF
+  source: yahoo
+  group: em_bond_etf
+  frequency: daily
+  params:
+    ticker: VWOB
+  asset_class: fixed_income
