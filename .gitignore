@@ -76,3 +76,43 @@ __pycache__/
 *.pyc
 prism-mac-venv/
 _legacy_backup/
+
+# ===== PRISM CLEANUP (added by cleanup script) =====
+# Virtual environments
+_legacy_backup/
+_cleanup_backup*/
+*venv*/
+venv/
+.venv/
+env/
+
+# Output files - generated
+output/
+*.csv
+*.png  
+*.db
+*.log
+overnight.log
+
+# Large data
+prism_data/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Mac
+.DS_Store
+**/.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Temp/patch files
+*.diff
+*.patch
+*_PATCHED.py
