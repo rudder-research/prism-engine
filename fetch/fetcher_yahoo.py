@@ -1,15 +1,42 @@
 """
 Yahoo Finance Fetcher - Stock, ETF, and market data
+
+Fixes applied:
+- fetch_all() always returns DataFrame, never None
+- Proper ticker extraction from registry (handles params.ticker)
+- Fallback ticker mapping applied
+- Known problematic tickers filtered
 """
 
 from pathlib import Path
 from typing import Optional, Any, List
 import pandas as pd
 import logging
+import json
 
 from .fetcher_base import BaseFetcher
 
 logger = logging.getLogger(__name__)
+
+
+def _load_fallback_map():
+    """Load ticker fallback mappings from yahoo_fallback_map.json."""
+    fallback_path = Path(__file__).parent.parent / "data" / "registry" / "yahoo_fallback_map.json"
+    if fallback_path.exists():
+        try:
+            with open(fallback_path) as f:
+                return json.load(f)
+        except Exception as e:
+            logger.warning(f"Could not load fallback map: {e}")
+    return {}
+
+
+FALLBACK_MAP = _load_fallback_map()
+
+# Tickers known to be problematic (delisted, unavailable, etc.)
+KNOWN_PROBLEMATIC_TICKERS = {
+    "^GVZ",   # Gold Volatility Index - often unavailable
+}
 
 
 class YahooFetcher(BaseFetcher):
@@ -57,6 +84,12 @@ class YahooFetcher(BaseFetcher):
             DataFrame with OHLCV data
         """
         import yfinance as yf
+
+        # Apply fallback mapping if available
+        original_ticker = ticker
+        ticker = FALLBACK_MAP.get(ticker, ticker)
+        if ticker != original_ticker:
+            logger.info(f"Remapped ticker {original_ticker} -> {ticker}")
 
         try:
             # Download data
@@ -113,6 +146,12 @@ class YahooFetcher(BaseFetcher):
         """
         import yfinance as yf
 
+        # Apply fallback mapping
+        original_ticker = ticker
+        ticker = FALLBACK_MAP.get(ticker, ticker)
+        if ticker != original_ticker:
+            logger.info(f"Remapped ticker {original_ticker} -> {ticker}")
+
         try:
             df = yf.download(
                 ticker,
@@ -154,6 +193,13 @@ class YahooFetcher(BaseFetcher):
         """
         import yfinance as yf
 
+        # Filter out known problematic tickers
+        tickers = [t for t in tickers if t not in KNOWN_PROBLEMATIC_TICKERS]
+
+        if not tickers:
+            logger.warning("No valid tickers to fetch after filtering")
+            return pd.DataFrame()
+
         try:
             df = yf.download(
                 tickers,
@@ -190,9 +236,12 @@ class YahooFetcher(BaseFetcher):
         end_date: Optional[str] = None,
         interval: str = "1d",
         **kwargs
-    ) -> Optional[pd.DataFrame]:
+    ) -> pd.DataFrame:
         """
         Unified Yahoo Finance fetcher for the entire market registry.
+
+        IMPORTANT: This method ALWAYS returns a DataFrame, never None.
+        Returns empty DataFrame if no data available.
 
         Args:
             registry: PRISM metric registry dictionary
@@ -201,21 +250,30 @@ class YahooFetcher(BaseFetcher):
             interval: Yahoo interval ("1d", "1wk", "1mo")
 
         Returns:
-            DataFrame with merged market data
+            DataFrame with merged market data (empty if no data)
         """
         if "market" not in registry:
             logger.error("Registry missing 'market' section.")
-            return None
+            return pd.DataFrame()  # Never return None
 
-        tickers = [
-            item.get("symbol") or item.get("ticker")
-            for item in registry["market"]
-            if item.get("symbol") or item.get("ticker")
-        ]
+        # Extract tickers from various possible locations in registry
+        tickers = []
+        for item in registry["market"]:
+            # Try multiple locations where ticker might be stored
+            ticker = (
+                item.get("ticker") or
+                item.get("symbol") or
+                item.get("params", {}).get("ticker") or
+                item.get("name", "").upper()
+            )
+            if ticker and ticker not in KNOWN_PROBLEMATIC_TICKERS:
+                tickers.append(ticker)
 
         if not tickers:
             logger.error("No Yahoo tickers found in registry['market']")
-            return None
+            return pd.DataFrame()  # Never return None
+
+        logger.info(f"Fetching {len(tickers)} market tickers from Yahoo Finance")
 
         # Attempt batch fetch first (fastest)
         try:
@@ -231,6 +289,7 @@ class YahooFetcher(BaseFetcher):
 
         # Fallback: fetch each individually
         merged = None
+        successful = 0
         for t in tickers:
             df_t = self.fetch_single(
                 t,
@@ -242,19 +301,23 @@ class YahooFetcher(BaseFetcher):
                 logger.warning(f"Skipping ticker (no data): {t}")
                 continue
 
+            successful += 1
             if merged is None:
                 merged = df_t
             else:
                 merged = pd.merge(merged, df_t, on="date", how="outer")
 
-        return merged
+        logger.info(f"Successfully fetched {successful}/{len(tickers)} tickers")
+
+        # CRITICAL: Always return DataFrame, never None
+        return merged if merged is not None else pd.DataFrame()
 
 
 def fetch_registry_market_data(
     registry: dict,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-) -> Optional[pd.DataFrame]:
+) -> pd.DataFrame:
     """
     Fetch market data for all tickers defined in the registry.
 
@@ -265,17 +328,23 @@ def fetch_registry_market_data(
 
     Returns:
         DataFrame with 'date' column and one column per ticker (close prices)
+        Returns empty DataFrame if no data (never None)
     """
     # Extract tickers from registry
     tickers = []
     for indicator in registry.get("market", []):
-        ticker = indicator.get("ticker") or indicator.get("name")
+        ticker = (
+            indicator.get("ticker") or
+            indicator.get("symbol") or
+            indicator.get("params", {}).get("ticker") or
+            indicator.get("name")
+        )
         if ticker:
             tickers.append(ticker)
 
     if not tickers:
         logger.warning("No market tickers found in registry")
-        return None
+        return pd.DataFrame()  # Never return None
 
     logger.info(f"Fetching {len(tickers)} market tickers from Yahoo Finance")
 
@@ -290,13 +359,13 @@ def fetch_registry_market_data(
 
         if df is None or df.empty:
             logger.warning("No data returned from Yahoo Finance")
-            return None
+            return pd.DataFrame()  # Never return None
 
         return df
 
     except Exception as e:
         logger.error(f"Error fetching registry market data: {e}")
-        return None
+        return pd.DataFrame()  # Never return None
 
 
 # Common Yahoo Finance tickers for financial analysis
