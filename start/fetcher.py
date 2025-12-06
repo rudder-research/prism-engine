@@ -3,6 +3,10 @@
 PRISM Unified Fetcher Launcher
 ==============================
 
+Fixes applied:
+- Safe length calculations (handles None/empty results)
+- Proper result type handling for DataFrame vs dict
+
 Command-line interface for fetching market and economic data.
 
 Usage:
@@ -16,6 +20,8 @@ import argparse
 import logging
 import sys
 from pathlib import Path
+
+import pandas as pd
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -34,6 +40,29 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _safe_len(obj):
+    """
+    Safely get length of an object.
+
+    Handles:
+    - None -> 0
+    - Empty DataFrame -> 0
+    - DataFrame -> number of columns minus 1 (excluding date)
+    - Dict -> len(dict)
+    - List -> len(list)
+    """
+    if obj is None:
+        return 0
+    if isinstance(obj, pd.DataFrame):
+        if obj.empty:
+            return 0
+        # For DataFrames, count columns minus the date column
+        return max(0, len(obj.columns) - 1)
+    if isinstance(obj, (dict, list)):
+        return len(obj)
+    return 0
+
+
 def fetch_market(registry, start_date=None, end_date=None, write_to_db=True):
     """
     Fetch all enabled market instruments.
@@ -42,53 +71,56 @@ def fetch_market(registry, start_date=None, end_date=None, write_to_db=True):
         registry: The loaded metric registry dictionary
         start_date: Optional start date filter
         end_date: Optional end date filter
-        write_to_db: Whether to write to database
+        write_to_db: Whether to write to database (not currently used by Yahoo)
 
     Returns:
-        Dictionary of fetched DataFrames
+        DataFrame of fetched data (may be empty, never None)
     """
     logger.info("=" * 60)
     logger.info("FETCHING MARKET DATA")
     logger.info("=" * 60)
 
     fetcher = YahooFetcher()
-    # Pass registry to fetch_all (required by new unified fetcher interface)
+    # Note: YahooFetcher.fetch_all() doesn't use write_to_db parameter
     results = fetcher.fetch_all(
         registry=registry,
         start_date=start_date,
-        end_date=end_date,
-        write_to_db=write_to_db
+        end_date=end_date
     )
-    
-    logger.info(f"Market fetch complete: {len(results)} instruments")
+
+    # Safe count calculation
+    count = _safe_len(results)
+    logger.info(f"Market fetch complete: {count} instruments")
     return results
 
 
 def fetch_economic(start_date=None, end_date=None, write_to_db=True):
     """
     Fetch all enabled economic series.
-    
+
     Args:
         start_date: Optional start date filter
         end_date: Optional end date filter
         write_to_db: Whether to write to database
-        
+
     Returns:
-        Dictionary of fetched DataFrames
+        Dictionary of fetched DataFrames (may be empty, never None)
     """
     logger.info("=" * 60)
     logger.info("FETCHING ECONOMIC DATA")
     logger.info("=" * 60)
-    
+
     fetcher = FREDFetcher()
     results = fetcher.fetch_all(
         write_to_db=write_to_db,
         start_date=start_date,
         end_date=end_date
     )
-    
-    logger.info(f"Economic fetch complete: {len(results)} series")
-    return results
+
+    # Safe count calculation
+    count = _safe_len(results)
+    logger.info(f"Economic fetch complete: {count} series")
+    return results if results is not None else {}
 
 
 def test_connections():
@@ -96,26 +128,31 @@ def test_connections():
     logger.info("=" * 60)
     logger.info("TESTING CONNECTIONS")
     logger.info("=" * 60)
-    
+
     results = {}
-    
+
     # Test Yahoo
     logger.info("Testing Yahoo Finance...")
     yahoo = YahooFetcher()
-    results["yahoo"] = yahoo.test_connection()
+    try:
+        test_df = yahoo.fetch_single("SPY", start_date="2024-01-01", end_date="2024-01-05")
+        results["yahoo"] = test_df is not None and not test_df.empty
+    except Exception as e:
+        logger.error(f"Yahoo test error: {e}")
+        results["yahoo"] = False
     logger.info(f"  Yahoo Finance: {'OK' if results['yahoo'] else 'FAILED'}")
-    
+
     # Test FRED
     logger.info("Testing FRED API...")
     fred = FREDFetcher()
     results["fred"] = fred.test_connection()
     logger.info(f"  FRED API: {'OK' if results['fred'] else 'FAILED'}")
-    
+
     # Summary
     all_ok = all(results.values())
     logger.info("=" * 60)
     logger.info(f"Connection test: {'ALL PASSED' if all_ok else 'SOME FAILED'}")
-    
+
     return results
 
 
@@ -124,30 +161,30 @@ def show_database_status():
     logger.info("=" * 60)
     logger.info("DATABASE STATUS")
     logger.info("=" * 60)
-    
+
     try:
         from data.sql.db import get_db_path, get_table_stats, list_indicators
-        
+
         db_path = get_db_path()
         logger.info(f"Database path: {db_path}")
-        
+
         stats = get_table_stats()
         logger.info("\nTable statistics:")
         for table, count in stats.items():
             logger.info(f"  {table}: {count} rows")
-        
+
         # Show indicators by system
         indicators = list_indicators()
         systems = {}
         for ind in indicators:
             sys = ind["system"]
             systems[sys] = systems.get(sys, 0) + 1
-        
+
         if systems:
             logger.info("\nIndicators by system:")
             for sys, count in sorted(systems.items()):
                 logger.info(f"  {sys}: {count} indicators")
-        
+
     except Exception as e:
         logger.error(f"Could not get database status: {e}")
 
@@ -165,7 +202,7 @@ Examples:
     python start/fetcher.py --status
         """
     )
-    
+
     # Data type selection
     parser.add_argument(
         "--market", "-m",
@@ -182,7 +219,7 @@ Examples:
         action="store_true",
         help="Fetch all data types"
     )
-    
+
     # Date filters
     parser.add_argument(
         "--start-date", "-s",
@@ -194,7 +231,7 @@ Examples:
         type=str,
         help="End date (YYYY-MM-DD)"
     )
-    
+
     # Options
     parser.add_argument(
         "--no-db",
@@ -216,33 +253,38 @@ Examples:
         action="store_true",
         help="Enable verbose logging"
     )
-    
+
     args = parser.parse_args()
-    
+
     # Configure logging level
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
-    
+
     # Handle commands
     if args.test:
         results = test_connections()
         return 0 if all(results.values()) else 1
-    
+
     if args.status:
         show_database_status()
         return 0
-    
+
     # If no data type specified, show help
     if not (args.all or args.market or args.economic):
         parser.print_help()
         return 0
-    
+
     # Fetch data
     write_to_db = not args.no_db
-    results = {"market": {}, "economic": {}}
+    results = {"market": None, "economic": {}}
 
     # Load the registry (required by unified fetcher interface)
-    registry = load_metric_registry()
+    try:
+        registry = load_metric_registry()
+    except Exception as e:
+        logger.error(f"Failed to load registry: {e}")
+        logger.error("Make sure PyYAML is installed: pip install pyyaml")
+        return 1
 
     if args.all or args.market:
         results["market"] = fetch_market(
@@ -251,24 +293,28 @@ Examples:
             end_date=args.end_date,
             write_to_db=write_to_db
         )
-    
+
     if args.all or args.economic:
         results["economic"] = fetch_economic(
             start_date=args.start_date,
             end_date=args.end_date,
             write_to_db=write_to_db
         )
-    
-    # Summary
+
+    # Summary - with safe length calculations
     logger.info("=" * 60)
     logger.info("FETCH SUMMARY")
     logger.info("=" * 60)
-    logger.info(f"Market instruments: {len(results['market'])}")
-    logger.info(f"Economic series: {len(results['economic'])}")
-    
+
+    market_count = _safe_len(results.get('market'))
+    econ_count = _safe_len(results.get('economic'))
+
+    logger.info(f"Market instruments: {market_count}")
+    logger.info(f"Economic series: {econ_count}")
+
     if write_to_db:
         show_database_status()
-    
+
     return 0
 
 
