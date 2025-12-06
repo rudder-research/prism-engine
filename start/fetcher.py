@@ -69,28 +69,59 @@ def _split_registry_by_source(registry):
     """
     Split market registry items by their data source.
 
+    IMPORTANT: Only VIX and DXY use Yahoo. Everything else routes to Stooq.
+
     Args:
         registry: The loaded metric registry dictionary
 
     Returns:
         Tuple of (yahoo_registry, stooq_registry) - each a copy with filtered market items
     """
+    # Only these tickers should use Yahoo Finance
+    YAHOO_ONLY_TICKERS = {
+        "^VIX",      # VIX - not available on Stooq
+        "DX-Y.NYB",  # Dollar Index - Yahoo format
+        "vix",       # lowercase variants
+        "dxy",
+    }
+
     yahoo_items = []
     stooq_items = []
 
     for item in registry.get("market", []):
-        source = item.get("source", "yahoo").lower()
-        if source == "stooq":
-            stooq_items.append(item)
-        else:
-            # Default to Yahoo for backward compatibility
+        # Get ticker from various locations
+        ticker = (
+            item.get("params", {}).get("ticker") or
+            item.get("ticker") or
+            item.get("name", "").upper()
+        )
+
+        # Check if this ticker should use Yahoo
+        ticker_upper = ticker.upper() if ticker else ""
+        ticker_lower = ticker.lower() if ticker else ""
+
+        if ticker in YAHOO_ONLY_TICKERS or ticker_upper in YAHOO_ONLY_TICKERS or ticker_lower in YAHOO_ONLY_TICKERS:
             yahoo_items.append(item)
+        else:
+            # Everything else goes to Stooq - convert ticker format if needed
+            stooq_item = dict(item)
+            stooq_item["source"] = "stooq"
+
+            # Convert Yahoo ticker format to Stooq format if needed
+            if ticker and not ticker.endswith((".US", ".F")):
+                # Add .US suffix for regular tickers (stocks, ETFs)
+                stooq_ticker = f"{ticker}.US"
+                if "params" not in stooq_item:
+                    stooq_item["params"] = {}
+                stooq_item["params"]["ticker"] = stooq_ticker
+
+            stooq_items.append(stooq_item)
 
     # Create filtered registries
     yahoo_registry = {**registry, "market": yahoo_items}
     stooq_registry = {**registry, "market": stooq_items}
 
-    logger.info(f"Registry split: {len(yahoo_items)} Yahoo, {len(stooq_items)} Stooq")
+    logger.info(f"Registry split: {len(yahoo_items)} Yahoo (VIX/DXY only), {len(stooq_items)} Stooq")
 
     return yahoo_registry, stooq_registry
 
