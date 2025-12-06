@@ -1,14 +1,126 @@
-pandas>=2.0
-numpy>=1.26
-scipy>=1.11
-scikit-learn>=1.3
-fredapi>=0.5
-yfinance>=0.2.30
-requests>=2.31
-matplotlib>=3.8
-seaborn>=0.13
-tqdm>=4.66
-pyarrow>=14.0
-python-dateutil>=2.8
+# ==============================================================================
+# PRISM ENGINE - Complete Requirements
+# ==============================================================================
+# Last updated: December 2025
+#
+# Install with: pip install -r requirements.txt
+#
+# For fresh install:
+#   python -m venv venv
+#   source venv/bin/activate  (Linux/Mac)
+#   venv\Scripts\activate     (Windows)
+#   pip install --upgrade pip
+#   pip install -r requirements.txt
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# CORE DATA SCIENCE
+# ------------------------------------------------------------------------------
+numpy>=1.24.0
+pandas>=2.0.0
+scipy>=1.10.0
+
+# ------------------------------------------------------------------------------
+# MACHINE LEARNING
+# ------------------------------------------------------------------------------
+scikit-learn>=1.3.0
+
+# Hidden Markov Models for regime detection
+hmmlearn>=0.3.0
+
+# ------------------------------------------------------------------------------
+# VISUALIZATION
+# ------------------------------------------------------------------------------
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# ------------------------------------------------------------------------------
+# DATA FETCHING
+# ------------------------------------------------------------------------------
+# FRED (Federal Reserve Economic Data)
+fredapi>=0.5.0
+
+# Stock data (Stooq, Yahoo backup)
+pandas-datareader>=0.10.0
+yfinance>=0.2.28
+
+# HTTP requests
+requests>=2.28.0
+
+# ------------------------------------------------------------------------------
+# DATABASE
+# ------------------------------------------------------------------------------
+# SQLite is built into Python, but we need SQLAlchemy for advanced features
+sqlalchemy>=2.0.0
+
+# ------------------------------------------------------------------------------
+# CONFIGURATION & UTILITIES
+# ------------------------------------------------------------------------------
 pyyaml>=6.0
-tenacity>=8.0
+python-dotenv>=1.0.0
+
+# ------------------------------------------------------------------------------
+# STATISTICAL & FINANCIAL ANALYSIS
+# ------------------------------------------------------------------------------
+statsmodels>=0.14.0
+
+# Arch models (GARCH, volatility modeling)
+arch>=6.0.0
+
+# ------------------------------------------------------------------------------
+# NETWORK ANALYSIS (for Network Lens)
+# ------------------------------------------------------------------------------
+networkx>=3.0
+
+# ------------------------------------------------------------------------------
+# TOPOLOGICAL DATA ANALYSIS (optional, for TDA Lens)
+# ------------------------------------------------------------------------------
+# giotto-tda>=0.6.0  # Uncomment if you want full TDA support (large install)
+
+# ------------------------------------------------------------------------------
+# TIME SERIES (optional advanced)
+# ------------------------------------------------------------------------------
+# Prophet for forecasting (optional - large install)
+# prophet>=1.1.0
+
+# ------------------------------------------------------------------------------
+# PROGRESS BARS (optional but nice)
+# ------------------------------------------------------------------------------
+tqdm>=4.65.0
+
+# ------------------------------------------------------------------------------
+# JUPYTER SUPPORT (optional for notebooks)
+# ------------------------------------------------------------------------------
+# jupyter>=1.0.0
+# jupyterlab>=4.0.0
+# ipywidgets>=8.0.0
+
+# ------------------------------------------------------------------------------
+# TESTING (optional for development)
+# ------------------------------------------------------------------------------
+# pytest>=7.0.0
+# pytest-cov>=4.0.0
+
+# ------------------------------------------------------------------------------
+# CODE QUALITY (optional for development)
+# ------------------------------------------------------------------------------
+# black>=23.0.0
+# flake8>=6.0.0
+# isort>=5.12.0
+
+# ==============================================================================
+# VERSION NOTES
+# ==============================================================================
+# 
+# scipy: Version 1.12+ removed cwt from scipy.signal - we don't use it
+# hmmlearn: Requires numpy<2.0 on some systems - if issues, pin numpy<2.0
+# giotto-tda: Large dependency, only needed for topological data analysis
+#
+# If you get conflicts, try:
+#   pip install --upgrade pip setuptools wheel
+#   pip install -r requirements.txt --no-cache-dir
+#
+# For Apple Silicon (M1/M2/M3) issues:
+#   pip install numpy --no-binary :all:
+#   or use conda instead of pip
+# ==============================================================================
